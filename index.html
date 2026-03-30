@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Accessibility Game Hub</title>
+    <style>
+        body { 
+            background-color: #000; color: white; 
+            font-family: sans-serif; margin: 0; padding: 20px;
+            display: flex; flex-direction: column; align-items: center;
+            min-height: 100vh;
+        }
+        h1 { color: #00FF00; font-size: 40px; text-align: center; }
+        
+        .game-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 25px; width: 100%; max-width: 1000px; margin-top: 40px;
+            flex-grow: 1;
+        }
+
+        .game-card {
+            background: #111; border: 5px solid #00FFFF; border-radius: 25px;
+            padding: 40px; text-align: center; text-decoration: none;
+            transition: transform 0.2s;
+        }
+        .game-card:hover { transform: scale(1.05); background: #222; }
+        
+        .game-icon { font-size: 100px; margin-bottom: 20px; display: block; }
+        .game-title { color: #00FFFF; font-size: 32px; font-weight: bold; display: block; }
+        
+        /* Teacher / Donation Section */
+        footer {
+            margin-top: 50px; padding: 20px; text-align: center;
+            border-top: 1px solid #333; width: 100%; max-width: 600px;
+        }
+        .kofi-button {
+            background-color: #29abe0; color: white; padding: 10px 20px;
+            text-decoration: none; border-radius: 10px; font-weight: bold;
+            display: inline-block; margin-top: 10px;
+        }
+        .license-text { font-size: 12px; color: #666; margin-top: 15px; }
+    </style>
+</head>
+<body>
+
+    <h1>Student Interaction Hub</h1>
+
+    <div class="game-grid">
+        <!-- GAME: DJ PARTY -->
+        <a href="dj-party/index.html" class="game-card">
+            <span class="game-icon">🎧</span>
+            <span class="game-title">DJ PARTY</span>
+        </a>
+
+        <!-- Add more game cards here as you build them -->
+    </div>
+
+    <footer>
+        <p style="color: #888;">Created for students with physical & mental disabilities.</p>
+        
+        <!-- Replace 'yourlink' with your actual Ko-fi URL -->
+        <a href="https://ko-fi.com/nocoast" target="_blank" class="kofi-button">
+            ☕ Support this project on Ko-fi
+        </a>
+
+        <div class="license-text">
+            Released under the MIT License. Free for schools and parents.
+        </div>
+    </footer>
+
+</body>
+</html>
