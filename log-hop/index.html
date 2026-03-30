@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>MEGA LOG HOP - STEADY STREAM</title>
+    <title>MEGA LOG HOP - COLOR CONTRAST</title>
     <style>
         body { 
             background-color: #000; margin: 0; overflow: hidden; 
@@ -45,11 +45,11 @@
 
     <div id="overlay" onclick="startEngine()">
         <div id="start-btn">START RIVER HOP</div>
-        <p style="margin-top: 20px; color: white; font-size: 20px;">(Slower logs! Alternating lanes!)</p>
+        <p style="margin-top: 20px; color: white; font-size: 20px;">(Jump across the logs!)</p>
     </div>
 
     <canvas id="gameCanvas"></canvas>
-    <h1>STEADY STREAM</h1>
+    <h1>RIVER JOURNEY</h1>
 
     <script>
         const canvas = document.getElementById('gameCanvas');
@@ -113,14 +113,13 @@
             const logH = canvas.height * 0.55; 
             const gapH = 120; 
 
+            // --- NO GREEN LOGS LIST ---
+            // These hues avoid the 80-160 degree range (Green)
+            const safeHues = [0, 30, 200, 280, 320]; 
+
             for(let i=0; i<riverLanes; i++) {
-                // --- ALTERNATING DIRECTIONS ---
-                // Lane 0: Down (1), Lane 1: Up (-1), Lane 2: Down (1)
                 let dir = (i % 2 === 0) ? 1 : -1;
-                
-                // --- SLOWER SPEED (0.8 to 1.3) ---
                 let speed = 0.8 + Math.random() * 0.5;
-                
                 let logsInLane = [];
                 let currentY = -logH;
                 while (currentY < canvas.height + logH) {
@@ -135,7 +134,8 @@
                     logs: logsInLane,
                     logH: logH,
                     gapH: gapH,
-                    color: `hsl(${30 + i * 45}, 100%, 50%)`
+                    // Pick a hue that is NOT green
+                    color: `hsl(${safeHues[i % safeHues.length]}, 100%, 50%)`
                 });
             }
         }
@@ -148,7 +148,6 @@
             const now = Date.now();
             if (now - lastPressTime < cooldown) return;
             lastPressTime = now;
-
             jump();
         }
 
@@ -167,7 +166,6 @@
             const gain = audioCtx.createGain();
             osc.connect(gain); gain.connect(audioCtx.destination);
             const now = audioCtx.currentTime;
-
             if(type === 'jump') {
                 osc.frequency.setValueAtTime(300, now);
                 osc.frequency.exponentialRampToValueAtTime(600, now + 0.1);
@@ -196,8 +194,6 @@
                 if (step.type === 'bank') {
                     ctx.fillStyle = '#333';
                     ctx.fillRect(step.x - bankWidth/2, 0, bankWidth, canvas.height);
-                    ctx.strokeStyle = '#555'; ctx.lineWidth = 4;
-                    ctx.strokeRect(step.x - bankWidth/2, 0, bankWidth, canvas.height);
                 } else if (step.type === 'sandbar') {
                     ctx.fillStyle = 'rgba(255, 140, 0, 0.2)';
                     ctx.fillRect(step.x - sandbarWidth/2, 0, sandbarWidth, canvas.height);
@@ -209,15 +205,11 @@
             laneData.forEach(lane => {
                 let laneX = steps.find(s => s.laneIdx === lane.laneIdx).x;
                 let logW = laneWidth * 0.85;
-
                 lane.logs.forEach(log => {
                     log.y += lane.speed * lane.dir;
                     const totalLoop = lane.logH + lane.gapH;
-                    if (lane.dir === 1 && log.y > canvas.height + 100) {
-                        log.y -= (lane.logs.length * totalLoop);
-                    } else if (lane.dir === -1 && log.y < -lane.logH - 100) {
-                        log.y += (lane.logs.length * totalLoop);
-                    }
+                    if (lane.dir === 1 && log.y > canvas.height + 100) log.y -= (lane.logs.length * totalLoop);
+                    else if (lane.dir === -1 && log.y < -lane.logH - 100) log.y += (lane.logs.length * totalLoop);
 
                     ctx.fillStyle = lane.color;
                     ctx.beginPath();
@@ -228,7 +220,6 @@
                 });
             });
 
-            // STICKY FROG LOGIC
             if (!frog.isJumping && gameState === "play") {
                 let currentStep = steps[frog.stepIdx];
                 if (currentStep.type === 'lane') {
@@ -271,7 +262,6 @@
                 playSynth('win', 0.5);
                 megaCelebration(frog.x, frog.y);
                 setTimeout(resetGame, 3500);
-                return;
             }
             if (currentStep.type === 'lane') {
                 let lane = laneData.find(l => l.laneIdx === currentStep.laneIdx);
@@ -279,24 +269,20 @@
                 if (!onAnyLog) {
                     gameState = "lose";
                     playSynth('splash', 0.5);
-                    if (navigator.vibrate) navigator.vibrate([100, 50, 100]);
-                } else {
-                    if (navigator.vibrate) navigator.vibrate(60);
                 }
             }
         }
 
         function drawFrog(x, y) {
+            // Thick White Outline
             ctx.fillStyle = 'white';
-            ctx.beginPath();
-            ctx.arc(x, y, 48, 0, Math.PI * 2); 
-            ctx.fill();
+            ctx.beginPath(); ctx.arc(x, y, 48, 0, Math.PI * 2); ctx.fill();
 
+            // Neon Green Body
             ctx.fillStyle = '#00FF00';
-            ctx.shadowBlur = 15; ctx.shadowColor = "#00FF00";
             ctx.beginPath(); ctx.arc(x, y, 40, 0, Math.PI*2); ctx.fill();
-            ctx.shadowBlur = 0;
 
+            // Eyes
             ctx.fillStyle = "white";
             ctx.beginPath(); ctx.arc(x-15, y-10, 11, 0, Math.PI*2); ctx.fill();
             ctx.beginPath(); ctx.arc(x+15, y-10, 11, 0, Math.PI*2); ctx.fill();
@@ -309,16 +295,11 @@
             flash.style.backgroundColor = "white";
             flash.style.opacity = 1;
             setTimeout(() => flash.style.opacity = 0, 400);
-            for(let i=0; i<10; i++) {
-                lasers.push({x: x, y: y, angle: (i * 36) * Math.PI/180, life: 1});
-            }
-            for(let i=0; i<30; i++) {
-                particles.push({
-                    x: x, y: y, 
-                    vx: (Math.random()-0.5) * 25, vy: (Math.random()-0.5) * 25, 
-                    life: 1, color: `hsl(${Math.random()*360}, 100%, 50%)`
-                });
-            }
+            for(let i=0; i<10; i++) lasers.push({x: x, y: y, angle: Math.random()*Math.PI*2, life: 1});
+            for(let i=0; i<30; i++) particles.push({
+                x: x, y: y, vx: (Math.random()-0.5) * 25, vy: (Math.random()-0.5) * 25, 
+                life: 1, color: `hsl(${Math.random()*360}, 100%, 50%)`
+            });
         }
 
         function drawEffects() {
@@ -327,8 +308,7 @@
                 ctx.lineWidth = 20 * l.life;
                 ctx.beginPath(); ctx.moveTo(l.x, l.y);
                 ctx.lineTo(l.x + Math.cos(l.angle) * 2000, l.y + Math.sin(l.angle) * 2000);
-                ctx.stroke();
-                l.life -= 0.015;
+                ctx.stroke(); l.life -= 0.015;
             });
             particles.forEach(p => {
                 ctx.fillStyle = p.color; ctx.globalAlpha = p.life;
