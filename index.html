@@ -14,27 +14,29 @@
         
         h1 { 
             color: #fff; 
-            font-size: clamp(24px, 5vw, 48px); 
+            font-size: clamp(28px, 6vw, 52px); 
             text-align: center; 
-            margin-bottom: 10px;
-            text-shadow: 0 0 10px #00FF00;
+            margin-bottom: 5px;
+            text-shadow: 0 0 15px rgba(0,255,0,0.5);
+            letter-spacing: 2px;
         }
 
         .subtitle {
             color: #888;
             margin-bottom: 40px;
-            font-size: 18px;
+            font-size: 20px;
             text-align: center;
+            font-weight: 300;
         }
         
         /* THE GRID CONTAINER */
         .game-grid {
             display: grid;
-            /* This ensures cards sit side-by-side until the screen gets too small */
-            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-            gap: 25px; 
+            /* Using minmax to ensure cards are large and readable */
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 30px; 
             width: 100%; 
-            max-width: 1100px; 
+            max-width: 1200px; 
             flex-grow: 1;
             align-content: start;
         }
@@ -42,72 +44,106 @@
         /* THE GAME CARD BASE */
         .game-card {
             background: #111; 
-            border-radius: 30px;
-            padding: 40px 20px; 
+            border-radius: 35px;
+            padding: 40px 25px; 
             text-align: center; 
             text-decoration: none;
-            transition: transform 0.2s, background 0.3s;
-            border: 4px solid transparent;
+            transition: transform 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275), background 0.3s;
+            border: 5px solid transparent;
             display: flex;
             flex-direction: column;
             justify-content: center;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.5);
         }
 
         .game-card:hover { 
-            transform: scale(1.05); 
+            transform: scale(1.03); 
             background: #1a1a1a;
         }
         
-        .game-icon { font-size: 100px; margin-bottom: 20px; display: block; }
-        .game-title { font-size: 32px; font-weight: bold; display: block; }
-        .game-desc { color: #888; margin-top: 15px; font-size: 16px; }
+        .game-icon { font-size: 110px; margin-bottom: 25px; display: block; }
+        .game-title { font-size: 34px; font-weight: bold; display: block; letter-spacing: 1px; }
+        .game-desc { color: #888; margin-top: 15px; font-size: 18px; line-height: 1.4; }
 
         /* INDIVIDUAL NEON COLORS */
-        .dj { border-color: #00FFFF; }
+        .dj { border-color: #00FFFF; box-shadow: 0 0 15px rgba(0, 255, 255, 0.2); }
         .dj .game-title { color: #00FFFF; }
         
-        .bubbles { border-color: #FF00FF; }
+        .bubbles { border-color: #FF00FF; box-shadow: 0 0 15px rgba(255, 0, 255, 0.2); }
         .bubbles .game-title { color: #FF00FF; }
 
-        .snake { border-color: #00FF00; }
+        .snake { border-color: #00FF00; box-shadow: 0 0 15px rgba(0, 255, 0, 0.2); }
         .snake .game-title { color: #00FF00; }
+
+        .loghop { border-color: #FF8C00; box-shadow: 0 0 15px rgba(255, 140, 0, 0.2); }
+        .loghop .game-title { color: #FF8C00; }
 
         /* Teacher / Donation Section */
         footer {
-            margin-top: 60px; padding: 30px; text-align: center;
-            border-top: 1px solid #333; width: 100%; max-width: 800px;
+            margin-top: 70px; padding: 40px 20px; text-align: center;
+            border-top: 1px solid #222; width: 100%; max-width: 900px;
         }
         .kofi-button {
-            background-color: #29abe0; color: white; padding: 15px 30px;
-            text-decoration: none; border-radius: 15px; font-weight: bold;
-            display: inline-block; margin-top: 15px;
-            font-size: 18px;
-            transition: background 0.2s;
+            background-color: #29abe0; color: white; padding: 18px 35px;
+            text-decoration: none; border-radius: 20px; font-weight: bold;
+            display: inline-block; margin-top: 20px;
+            font-size: 20px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+            transition: background 0.2s, transform 0.2s;
         }
-        .kofi-button:hover { background-color: #1a8bb8; }
-        .license-text { font-size: 13px; color: #555; margin-top: 20px; }
+        .kofi-button:hover { background-color: #1a8bb8; transform: translateY(-2px); }
+        .license-text { font-size: 14px; color: #444; margin-top: 25px; font-style: italic; }
     </style>
 </head>
 <body>
 
     <h1>Student Interaction Hub</h1>
-    <p class="subtitle">One-Button Sensory Experiences</p>
+    <p class="subtitle">One-Button Sensory & Cause-Effect Games</p>
 
     <div class="game-grid">
         <!-- GAME 1: DJ PARTY -->
         <a href="dj-party/index.html" class="game-card dj">
             <span class="game-icon">🎧</span>
             <span class="game-title">DJ PARTY</span>
-            <p class="game-desc">High energy techno & strobe effects.</p>
+            <p class="game-desc">High energy techno, neon strobe flashes, and big zooms.</p>
         </a>
 
         <!-- GAME 2: BUBBLE POP -->
         <a href="bubbles/index.html" class="game-card bubbles">
             <span class="game-icon">🫧</span>
             <span class="game-title">BUBBLE POP</span>
-            <p class="game-desc">Calm music & magical visuals.</p>
+            <p class="game-desc">Calm ambient music & magical popping bubble visuals.</p>
         </a>
 
         <!-- GAME 3: MEGA SNAKE -->
         <a href="snake/index.html" class="game-card snake">
-            <span class="game-icon">🐍</spa
+            <span class="game-icon">🐍</span>
+            <span class="game-title">MEGA SNAKE</span>
+            <p class="game-desc">Click to lunge toward the goal. High-speed steering.</p>
+        </a>
+
+        <!-- GAME 4: MEGA LOG HOP -->
+        <a href="log-hop/index.html" class="game-card loghop">
+            <span class="game-icon">🪵</span>
+            <span class="game-title">MEGA LOG HOP</span>
+            <p class="game-desc">Timing based: wait for a log and jump to reach the party.</p>
+        </a>
+    </div>
+
+    <footer>
+        <p style="color: #999; line-height: 1.6; font-size: 18px;">
+            Created specifically for students with severe physical and mental disabilities.<br>
+            Focusing on agency, impact, and the realization of cause-and-effect.
+        </p>
+        
+        <a href="https://ko-fi.com/nocoast" target="_blank" class="kofi-button">
+            ☕ Support this project on Ko-fi
+        </a>
+
+        <div class="license-text">
+            Released under the MIT License. Free for schools and parents everywhere.
+        </div>
+    </footer>
+
+</body>
+</html>
