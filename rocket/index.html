@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>MEGA ROCKET - BLAST OFF</title>
+    <title>MEGA ROCKET - FUEL UP</title>
     <style>
         body { 
             background-color: #000; margin: 0; overflow: hidden; 
@@ -38,7 +38,6 @@
         canvas { display: block; z-index: 10; }
         #flash { position: fixed; top:0; left:0; width:100%; height:100%; opacity: 0; z-index: 150; pointer-events: none; }
         
-        #hud { position: absolute; top: 20px; right: 20px; color: #FF4500; font-size: 30px; font-weight: bold; z-index: 50; }
         h1 { color: #FF4500; position: absolute; bottom: 20px; letter-spacing: 10px; opacity: 0.4; pointer-events: none; }
     </style>
 </head>
@@ -48,16 +47,15 @@
     <div id="flash"></div>
 
     <div id="overlay" onclick="startEngine()">
-        <div class="btn-ui">BUILD THE ROCKET</div>
-        <p style="margin-top: 20px; color: white; font-size: 24px;">(10 Taps to Launch!)</p>
+        <div class="btn-ui">START MISSION</div>
+        <p style="margin-top: 20px; color: white; font-size: 24px;">(Build & Fuel to Launch!)</p>
     </div>
 
     <div id="win-overlay">
-        <h2 style="color: #FF4500; font-size: 80px; margin: 0;">GREAT JOB!</h2>
+        <h2 style="color: #FF4500; font-size: 80px; margin: 0;">BLAST OFF!</h2>
         <p style="color: white; font-size: 30px;">SPACE EXPLORER!</p>
     </div>
 
-    <div id="hud">Build: 0/10</div>
     <canvas id="gameCanvas"></canvas>
     <h1>MEGA ROCKET</h1>
 
@@ -65,7 +63,6 @@
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
         const flash = document.getElementById('flash');
-        const hud = document.getElementById('hud');
         const winOverlay = document.getElementById('win-overlay');
         
         let audioCtx, isStarted = false, gameState = "build";
@@ -80,7 +77,7 @@
             audioCtx = new (window.AudioContext || window.webkitAudioContext)();
             canvas.width = window.innerWidth;
             canvas.height = window.innerHeight;
-            rocketY = canvas.height * 0.7;
+            rocketY = canvas.height * 0.75;
             
             for(let i=0; i<100; i++) {
                 stars.push({x: Math.random()*canvas.width, y: Math.random()*canvas.height, s: Math.random()*3});
@@ -101,15 +98,14 @@
             lastPressTime = now;
 
             pressCount++;
-            hud.innerText = `Build: ${pressCount}/10`;
 
             if (pressCount < 4) {
                 playSynth('clank', 0.5);
             } else if (pressCount < 10) {
-                shakeAmount = pressCount * 1.5;
+                shakeAmount = (pressCount - 3) * 2;
                 playSynth('charge', 0.5);
             } else {
-                launchRocket(); // Start the flight
+                launchRocket();
             }
 
             flashScreen("rgba(255, 69, 0, 0.3)", 100);
@@ -135,30 +131,29 @@
                 gain.gain.exponentialRampToValueAtTime(0.01, now + 0.1);
                 osc.start(); osc.stop(now + 0.1);
             } else if (type === 'charge') {
-                osc.frequency.setValueAtTime(100 + (pressCount * 50), now);
-                osc.frequency.linearRampToValueAtTime(300 + (pressCount * 50), now + 0.2);
+                osc.frequency.setValueAtTime(100 + (pressCount * 60), now);
+                osc.frequency.linearRampToValueAtTime(400 + (pressCount * 60), now + 0.2);
                 gain.gain.setValueAtTime(vol, now);
                 gain.gain.exponentialRampToValueAtTime(0.01, now + 0.2);
                 osc.start(); osc.stop(now + 0.2);
             } else if (type === 'blast') {
                 osc.type = 'sawtooth';
                 osc.frequency.setValueAtTime(60, now);
-                osc.frequency.exponentialRampToValueAtTime(1200, now + 2.0);
+                osc.frequency.exponentialRampToValueAtTime(1500, now + 2.5);
                 gain.gain.setValueAtTime(vol, now);
-                gain.gain.exponentialRampToValueAtTime(0.01, now + 2.0);
-                osc.start(); osc.stop(now + 2.0);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 2.5);
+                osc.start(); osc.stop(now + 2.5);
             }
         }
 
         function launchRocket() {
             gameState = "launch";
-            playSynth('blast', 0.8);
+            playSynth('blast', 0.9);
         }
 
         function winSequence() {
             gameState = "win";
             winOverlay.style.display = 'flex';
-            
             let winTimer = setInterval(() => {
                 megaCelebration(Math.random()*canvas.width, Math.random()*canvas.height);
             }, 400);
@@ -173,8 +168,7 @@
             pressCount = 0;
             gameState = "build";
             shakeAmount = 0;
-            rocketY = canvas.height * 0.7;
-            hud.innerText = `Build: 0/10`;
+            rocketY = canvas.height * 0.75;
             winOverlay.style.display = 'none';
         }
 
@@ -182,30 +176,54 @@
             ctx.fillStyle = 'black';
             ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-            // 1. Draw Stars
+            // 1. Background Stars
             ctx.fillStyle = "white";
             stars.forEach(s => {
-                if (gameState === "launch") s.y += 25; // Stars move faster during flight
+                if (gameState === "launch") s.y += 30;
                 if (s.y > canvas.height) s.y = 0;
                 ctx.beginPath(); ctx.arc(s.x, s.y, s.s, 0, Math.PI*2); ctx.fill();
             });
 
-            // 2. Rocket Flight Logic
+            // 2. Flight Logic
             let currentX = canvas.width/2 + (Math.random() * shakeAmount - shakeAmount/2);
             if (gameState === "launch") {
-                rocketY -= 12; // Speed of ascent
+                rocketY -= 15;
                 spawnSmoke(currentX, rocketY + 80);
-                
-                // --- THE FIX: Only trigger win screen once rocket is fully GONE ---
-                if (rocketY < -200) {
-                    winSequence();
-                }
+                if (rocketY < -300) winSequence();
             }
 
             drawRocket(currentX, rocketY);
+            drawFuelGauge();
             drawEffects();
 
             requestAnimationFrame(gameLoop);
+        }
+
+        function drawFuelGauge() {
+            if (pressCount < 4 || gameState === "win") return;
+            
+            const gx = 80, gy = canvas.height * 0.2, gw = 60, gh = canvas.height * 0.6;
+            
+            // Outer Frame
+            ctx.strokeStyle = "white";
+            ctx.lineWidth = 4;
+            ctx.strokeRect(gx, gy, gw, gh);
+
+            // Fuel Level Calculation (Press 4-10)
+            let fuelLevel = Math.min(1, (pressCount - 3) / 7);
+            if (gameState === "launch") fuelLevel = 1; // Keep full during launch
+
+            // Fill
+            ctx.fillStyle = "#00FF00";
+            ctx.shadowBlur = 15; ctx.shadowColor = "#00FF00";
+            let fillH = gh * fuelLevel;
+            ctx.fillRect(gx + 5, gy + gh - fillH + 5, gw - 10, fillH - 10);
+            ctx.shadowBlur = 0;
+
+            // Label
+            ctx.fillStyle = "white";
+            ctx.font = "bold 20px sans-serif";
+            ctx.fillText("FUEL", gx + 5, gy - 20);
         }
 
         function drawRocket(x, y) {
@@ -213,69 +231,63 @@
             ctx.save();
             ctx.translate(x, y);
 
-            // Base Fins
-            if (pressCount >= 1) {
+            // Parts appear step by step
+            if (pressCount >= 1) { // Fins
                 ctx.fillStyle = "#555";
                 ctx.beginPath();
-                ctx.moveTo(-60, 80); ctx.lineTo(60, 80); ctx.lineTo(0, 40); ctx.closePath(); ctx.fill();
+                ctx.moveTo(-70, 80); ctx.lineTo(70, 80); ctx.lineTo(0, 30); ctx.closePath(); ctx.fill();
             }
-            // Main Body
-            if (pressCount >= 2) {
+            if (pressCount >= 2) { // Body
                 ctx.fillStyle = "white";
-                ctx.fillRect(-40, -60, 80, 140);
-                // Window
+                ctx.fillRect(-45, -80, 90, 160);
                 ctx.fillStyle = "#00FFFF";
-                ctx.beginPath(); ctx.arc(0, -10, 20, 0, Math.PI*2); ctx.fill();
+                ctx.beginPath(); ctx.arc(0, -20, 25, 0, Math.PI*2); ctx.fill();
             }
-            // Nose Cone
-            if (pressCount >= 3) {
+            if (pressCount >= 3) { // Nose
                 ctx.fillStyle = "red";
                 ctx.beginPath();
-                ctx.moveTo(-40, -60); ctx.lineTo(40, -60); ctx.lineTo(0, -150);
+                ctx.moveTo(-45, -80); ctx.lineTo(45, -80); ctx.lineTo(0, -180);
                 ctx.closePath(); ctx.fill();
             }
             
-            // Engine Flames (Launch Phase)
             if (gameState === "launch") {
-                let flameLen = 150 + Math.random()*50;
+                let flameLen = 200 + Math.random()*100;
                 let grd = ctx.createLinearGradient(0, 80, 0, 80 + flameLen);
-                grd.addColorStop(0, "yellow");
-                grd.addColorStop(0.5, "orange");
-                grd.addColorStop(1, "transparent");
+                grd.addColorStop(0, "white"); grd.addColorStop(0.2, "yellow");
+                grd.addColorStop(0.5, "orange"); grd.addColorStop(1, "transparent");
                 ctx.fillStyle = grd;
                 ctx.beginPath();
-                ctx.moveTo(-30, 80); ctx.lineTo(30, 80); ctx.lineTo(0, 80 + flameLen);
+                ctx.moveTo(-35, 80); ctx.lineTo(35, 80); ctx.lineTo(0, 80 + flameLen);
                 ctx.closePath(); ctx.fill();
             }
-
             ctx.restore();
         }
 
         function spawnSmoke(x, y) {
-            for(let i=0; i<4; i++) {
+            for(let i=0; i<5; i++) {
                 particles.push({
-                    x: x + (Math.random()*60-30), y: y, 
-                    vx: (Math.random()-0.5)*8, vy: 10 + Math.random()*10, 
-                    life: 1, color: "rgba(200,200,200,0.4)", s: 15 + Math.random()*25
+                    x: x + (Math.random()*80-40), y: y, 
+                    vx: (Math.random()-0.5)*10, vy: 12 + Math.random()*15, 
+                    life: 1, color: "rgba(220,220,220,0.4)", s: 20 + Math.random()*30
                 });
             }
         }
 
         function megaCelebration(x, y) {
             flashScreen("white", 150);
-            for(let i=0; i<8; i++) lasers.push({x: x, y: y, angle: (i * 45) * Math.PI/180, life: 1});
-            for(let i=0; i<20; i++) particles.push({
-                x: x, y: y, vx: (Math.random()-0.5) * 20, vy: (Math.random()-0.5) * 20, 
-                life: 1, color: `hsl(${Math.random()*360}, 100%, 50%)`, s: 10
+            for(let i=0; i<10; i++) lasers.push({x: x, y: y, angle: Math.random()*Math.PI*2, life: 1});
+            for(let i=0; i<25; i++) particles.push({
+                x: x, y: y, vx: (Math.random()-0.5) * 25, vy: (Math.random()-0.5) * 25, 
+                life: 1, color: `hsl(${Math.random()*360}, 100%, 50%)`, s: 12
             });
         }
 
         function drawEffects() {
             lasers.forEach(l => {
                 ctx.strokeStyle = `rgba(255, 69, 0, ${l.life})`;
-                ctx.lineWidth = 20 * l.life;
+                ctx.lineWidth = 25 * l.life;
                 ctx.beginPath(); ctx.moveTo(l.x, l.y);
-                ctx.lineTo(l.x + Math.cos(l.angle) * 2000, l.y + Math.sin(l.angle) * 2000); ctx.stroke();
+                ctx.lineTo(l.x + Math.cos(l.angle) * 2500, l.y + Math.sin(l.angle) * 2500); ctx.stroke();
                 l.life -= 0.03;
             });
             particles.forEach(p => {
