@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>MEGA LOG HOP - HIGH CONTRAST</title>
+    <title>MEGA LOG HOP - STEADY STREAM</title>
     <style>
         body { 
             background-color: #000; margin: 0; overflow: hidden; 
@@ -45,11 +45,11 @@
 
     <div id="overlay" onclick="startEngine()">
         <div id="start-btn">START RIVER HOP</div>
-        <p style="margin-top: 20px; color: white; font-size: 20px;">(Tons of logs! Jump across safely!)</p>
+        <p style="margin-top: 20px; color: white; font-size: 20px;">(Slower logs! Alternating lanes!)</p>
     </div>
 
     <canvas id="gameCanvas"></canvas>
-    <h1>RIVER JOURNEY</h1>
+    <h1>STEADY STREAM</h1>
 
     <script>
         const canvas = document.getElementById('gameCanvas');
@@ -114,10 +114,14 @@
             const gapH = 120; 
 
             for(let i=0; i<riverLanes; i++) {
-                let dir = Math.random() > 0.5 ? 1 : -1;
-                let speed = 1.2 + Math.random() * 1.5;
-                let logsInLane = [];
+                // --- ALTERNATING DIRECTIONS ---
+                // Lane 0: Down (1), Lane 1: Up (-1), Lane 2: Down (1)
+                let dir = (i % 2 === 0) ? 1 : -1;
                 
+                // --- SLOWER SPEED (0.8 to 1.3) ---
+                let speed = 0.8 + Math.random() * 0.5;
+                
+                let logsInLane = [];
                 let currentY = -logH;
                 while (currentY < canvas.height + logH) {
                     logsInLane.push({ y: currentY, h: logH });
@@ -224,6 +228,7 @@
                 });
             });
 
+            // STICKY FROG LOGIC
             if (!frog.isJumping && gameState === "play") {
                 let currentStep = steps[frog.stepIdx];
                 if (currentStep.type === 'lane') {
@@ -281,21 +286,17 @@
             }
         }
 
-        // --- UPDATED FROG WITH WHITE OUTLINE ---
         function drawFrog(x, y) {
-            // 1. Draw a slightly larger white circle first as an outline
             ctx.fillStyle = 'white';
             ctx.beginPath();
-            ctx.arc(x, y, 48, 0, Math.PI * 2); // Body is 40, so 48 creates a thick border
+            ctx.arc(x, y, 48, 0, Math.PI * 2); 
             ctx.fill();
 
-            // 2. Draw the main neon green body
             ctx.fillStyle = '#00FF00';
             ctx.shadowBlur = 15; ctx.shadowColor = "#00FF00";
             ctx.beginPath(); ctx.arc(x, y, 40, 0, Math.PI*2); ctx.fill();
             ctx.shadowBlur = 0;
 
-            // 3. Draw Eyes
             ctx.fillStyle = "white";
             ctx.beginPath(); ctx.arc(x-15, y-10, 11, 0, Math.PI*2); ctx.fill();
             ctx.beginPath(); ctx.arc(x+15, y-10, 11, 0, Math.PI*2); ctx.fill();
