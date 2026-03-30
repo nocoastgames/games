@@ -32,11 +32,11 @@
         /* THE GRID CONTAINER */
         .game-grid {
             display: grid;
-            /* Using auto-fill so cards wrap naturally as you add more */
-            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-            gap: 30px; 
+            /* Auto-fit ensures the grid looks balanced with 6 items */
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 25px; 
             width: 100%; 
-            max-width: 1300px; 
+            max-width: 1200px; 
             flex-grow: 1;
             align-content: start;
         }
@@ -44,16 +44,16 @@
         /* THE GAME CARD BASE */
         .game-card {
             background: #111; 
-            border-radius: 40px;
-            padding: 45px 25px; 
+            border-radius: 35px;
+            padding: 35px 20px; 
             text-align: center; 
             text-decoration: none;
             transition: transform 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275), background 0.3s;
-            border: 6px solid transparent;
+            border: 5px solid transparent;
             display: flex;
             flex-direction: column;
             justify-content: center;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.7);
+            box-shadow: 0 10px 25px rgba(0,0,0,0.6);
         }
 
         .game-card:hover { 
@@ -61,29 +61,32 @@
             background: #1a1a1a;
         }
         
-        .game-icon { font-size: 110px; margin-bottom: 25px; display: block; }
-        .game-title { font-size: 34px; font-weight: bold; display: block; letter-spacing: 1px; }
-        .game-desc { color: #888; margin-top: 15px; font-size: 18px; line-height: 1.4; }
+        .game-icon { font-size: 90px; margin-bottom: 15px; display: block; }
+        .game-title { font-size: 30px; font-weight: bold; display: block; letter-spacing: 1px; }
+        .game-desc { color: #777; margin-top: 12px; font-size: 16px; line-height: 1.4; }
 
         /* INDIVIDUAL NEON THEMES */
-        .dj { border-color: #00FFFF; box-shadow: 0 0 20px rgba(0, 255, 255, 0.15); }
+        .dj { border-color: #00FFFF; box-shadow: 0 0 15px rgba(0, 255, 255, 0.1); }
         .dj .game-title { color: #00FFFF; }
         
-        .bubbles { border-color: #FF00FF; box-shadow: 0 0 20px rgba(255, 0, 255, 0.15); }
+        .bubbles { border-color: #FF00FF; box-shadow: 0 0 15px rgba(255, 0, 255, 0.1); }
         .bubbles .game-title { color: #FF00FF; }
 
-        .snake { border-color: #00FF00; box-shadow: 0 0 20px rgba(0, 255, 0, 0.15); }
+        .snake { border-color: #00FF00; box-shadow: 0 0 15px rgba(0, 255, 0, 0.1); }
         .snake .game-title { color: #00FF00; }
 
-        .loghop { border-color: #FF8C00; box-shadow: 0 0 20px rgba(255, 140, 0, 0.15); }
+        .loghop { border-color: #FF8C00; box-shadow: 0 0 15px rgba(255, 140, 0, 0.1); }
         .loghop .game-title { color: #FF8C00; }
 
-        .racer { border-color: #FFD700; box-shadow: 0 0 20px rgba(255, 215, 0, 0.15); }
+        .racer { border-color: #FFD700; box-shadow: 0 0 15px rgba(255, 215, 0, 0.1); }
         .racer .game-title { color: #FFD700; }
+
+        .rocket { border-color: #FF4500; box-shadow: 0 0 15px rgba(255, 69, 0, 0.1); }
+        .rocket .game-title { color: #FF4500; }
 
         /* Teacher / Donation Section */
         footer {
-            margin-top: 80px; padding: 40px 20px; text-align: center;
+            margin-top: 60px; padding: 40px 20px; text-align: center;
             border-top: 1px solid #222; width: 100%; max-width: 900px;
         }
         .kofi-button {
@@ -101,14 +104,14 @@
 <body>
 
     <h1>Student Interaction Hub</h1>
-    <p class="subtitle">One-Button Experiences for All Abilities</p>
+    <p class="subtitle">Cause-and-Effect Sensory Games</p>
 
     <div class="game-grid">
         <!-- GAME 1: DJ PARTY -->
         <a href="dj-party/index.html" class="game-card dj">
             <span class="game-icon">🎧</span>
             <span class="game-title">DJ PARTY</span>
-            <p class="game-desc">High energy techno, neon flashes, and big zooms.</p>
+            <p class="game-desc">High energy techno and neon strobe flashes.</p>
         </a>
 
         <!-- GAME 2: BUBBLE POP -->
@@ -129,21 +132,27 @@
         <a href="log-hop/index.html" class="game-card loghop">
             <span class="game-icon">🪵</span>
             <span class="game-title">MEGA LOG HOP</span>
-            <p class="game-desc">Timing based: jump across logs to reach the party.</p>
+            <p class="game-desc">Jump across logs and sandbars to reach the party.</p>
         </a>
 
         <!-- GAME 5: NEON RACER -->
         <a href="racer/index.html" class="game-card racer">
             <span class="game-icon">🏎️</span>
             <span class="game-title">NEON RACER</span>
-            <p class="game-desc">Click to VROOM! Complete 5 laps for a trophy.</p>
+            <p class="game-desc">Click to VROOM! Complete 5 laps to win.</p>
+        </a>
+
+        <!-- GAME 6: MEGA ROCKET -->
+        <a href="rocket/index.html" class="game-card rocket">
+            <span class="game-icon">🚀</span>
+            <span class="game-title">MEGA ROCKET</span>
+            <p class="game-desc">Tap 10 times to build and launch the rocket!</p>
         </a>
     </div>
 
     <footer>
         <p style="color: #999; line-height: 1.6; font-size: 18px;">
-            Created for students with different abilities.<br>
-            Focusing on direct agency, sensory impact, and cause-and-effect learning.
+            Accessible one-button experiences designed for students with different abilities.
         </p>
         
         <a href="https://ko-fi.com/nocoast" target="_blank" class="kofi-button">
