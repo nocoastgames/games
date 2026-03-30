@@ -5,164 +5,83 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Student Interaction Hub</title>
     <style>
-        body { 
-            background-color: #000; color: white; 
-            font-family: sans-serif; margin: 0; padding: 20px;
-            display: flex; flex-direction: column; align-items: center;
-            min-height: 100vh;
-        }
+        body { background-color: #000; color: white; font-family: sans-serif; margin: 0; padding: 20px; display: flex; flex-direction: column; align-items: center; min-height: 100vh; }
+        h1 { color: #fff; font-size: clamp(28px, 6vw, 52px); text-align: center; margin-bottom: 5px; text-shadow: 0 0 15px rgba(255,255,255,0.3); }
+        .subtitle { color: #888; margin-bottom: 40px; font-size: 20px; text-align: center; }
         
-        h1 { 
-            color: #fff; 
-            font-size: clamp(28px, 6vw, 52px); 
-            text-align: center; 
-            margin-bottom: 5px;
-            text-shadow: 0 0 15px rgba(255,255,255,0.3);
-            letter-spacing: 2px;
-        }
-
-        .subtitle {
-            color: #888;
-            margin-bottom: 40px;
-            font-size: 20px;
-            text-align: center;
-            font-weight: 300;
-        }
+        .game-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 25px; width: 100%; max-width: 1200px; flex-grow: 1; align-content: start; }
+        .game-card { background: #111; border-radius: 35px; padding: 35px 20px; text-align: center; text-decoration: none; transition: transform 0.25s; border: 5px solid transparent; display: flex; flex-direction: column; justify-content: center; }
+        .game-card:hover { transform: scale(1.03); background: #1a1a1a; }
+        .game-icon { font-size: 90px; margin-bottom: 15px; }
+        .game-title { font-size: 30px; font-weight: bold; }
         
-        /* THE GRID CONTAINER */
-        .game-grid {
-            display: grid;
-            /* Auto-fit ensures the grid looks balanced with 6 items */
-            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-            gap: 25px; 
-            width: 100%; 
-            max-width: 1200px; 
-            flex-grow: 1;
-            align-content: start;
+        .dj { border-color: #00FFFF; color: #00FFFF; }
+        .bubbles { border-color: #FF00FF; color: #FF00FF; }
+        .snake { border-color: #00FF00; color: #00FF00; }
+        .loghop { border-color: #FF8C00; color: #FF8C00; }
+        .racer { border-color: #FFD700; color: #FFD700; }
+        .rocket { border-color: #FF4500; color: #FF4500; }
+
+        /* SENSORY TOGGLE STYLING */
+        .sensory-controls {
+            background: #222; padding: 20px; border-radius: 20px; margin-bottom: 30px;
+            border: 2px solid #555; display: flex; align-items: center; gap: 15px;
         }
-
-        /* THE GAME CARD BASE */
-        .game-card {
-            background: #111; 
-            border-radius: 35px;
-            padding: 35px 20px; 
-            text-align: center; 
-            text-decoration: none;
-            transition: transform 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275), background 0.3s;
-            border: 5px solid transparent;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            box-shadow: 0 10px 25px rgba(0,0,0,0.6);
+        .toggle-btn {
+            padding: 10px 20px; border-radius: 10px; border: none; cursor: pointer;
+            font-weight: bold; font-size: 16px;
         }
+        .on { background: #ff4444; color: white; }
+        .off { background: #44ff44; color: black; }
 
-        .game-card:hover { 
-            transform: scale(1.03); 
-            background: #1a1a1a;
-        }
-        
-        .game-icon { font-size: 90px; margin-bottom: 15px; display: block; }
-        .game-title { font-size: 30px; font-weight: bold; display: block; letter-spacing: 1px; }
-        .game-desc { color: #777; margin-top: 12px; font-size: 16px; line-height: 1.4; }
-
-        /* INDIVIDUAL NEON THEMES */
-        .dj { border-color: #00FFFF; box-shadow: 0 0 15px rgba(0, 255, 255, 0.1); }
-        .dj .game-title { color: #00FFFF; }
-        
-        .bubbles { border-color: #FF00FF; box-shadow: 0 0 15px rgba(255, 0, 255, 0.1); }
-        .bubbles .game-title { color: #FF00FF; }
-
-        .snake { border-color: #00FF00; box-shadow: 0 0 15px rgba(0, 255, 0, 0.1); }
-        .snake .game-title { color: #00FF00; }
-
-        .loghop { border-color: #FF8C00; box-shadow: 0 0 15px rgba(255, 140, 0, 0.1); }
-        .loghop .game-title { color: #FF8C00; }
-
-        .racer { border-color: #FFD700; box-shadow: 0 0 15px rgba(255, 215, 0, 0.1); }
-        .racer .game-title { color: #FFD700; }
-
-        .rocket { border-color: #FF4500; box-shadow: 0 0 15px rgba(255, 69, 0, 0.1); }
-        .rocket .game-title { color: #FF4500; }
-
-        /* Teacher / Donation Section */
-        footer {
-            margin-top: 60px; padding: 40px 20px; text-align: center;
-            border-top: 1px solid #222; width: 100%; max-width: 900px;
-        }
-        .kofi-button {
-            background-color: #29abe0; color: white; padding: 18px 35px;
-            text-decoration: none; border-radius: 20px; font-weight: bold;
-            display: inline-block; margin-top: 20px;
-            font-size: 20px;
-            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
-            transition: background 0.2s, transform 0.2s;
-        }
-        .kofi-button:hover { background-color: #1a8bb8; transform: translateY(-2px); }
-        .license-text { font-size: 14px; color: #444; margin-top: 25px; font-style: italic; }
+        footer { margin-top: 60px; padding: 40px 20px; text-align: center; border-top: 1px solid #222; width: 100%; max-width: 900px; }
+        .kofi-button { background-color: #29abe0; color: white; padding: 18px 35px; text-decoration: none; border-radius: 20px; font-weight: bold; display: inline-block; margin-top: 20px; }
     </style>
 </head>
 <body>
 
     <h1>Student Interaction Hub</h1>
-    <p class="subtitle">Cause-and-Effect Sensory Games</p>
+    <p class="subtitle">One-Button Sensory Games</p>
+
+    <!-- MASTER SENSORY TOGGLE -->
+    <div class="sensory-controls">
+        <span>Visual Stimulation:</span>
+        <button id="sensoryToggle" class="toggle-btn off" onclick="toggleSensory()">HIGH (Standard)</button>
+    </div>
 
     <div class="game-grid">
-        <!-- GAME 1: DJ PARTY -->
-        <a href="dj-party/index.html" class="game-card dj">
-            <span class="game-icon">🎧</span>
-            <span class="game-title">DJ PARTY</span>
-            <p class="game-desc">High energy techno and neon strobe flashes.</p>
-        </a>
-
-        <!-- GAME 2: BUBBLE POP -->
-        <a href="bubbles/index.html" class="game-card bubbles">
-            <span class="game-icon">🫧</span>
-            <span class="game-title">BUBBLE POP</span>
-            <p class="game-desc">Calm music & magical popping bubble visuals.</p>
-        </a>
-
-        <!-- GAME 3: MEGA SNAKE -->
-        <a href="snake/index.html" class="game-card snake">
-            <span class="game-icon">🐍</span>
-            <span class="game-title">MEGA SNAKE</span>
-            <p class="game-desc">Click to lunge toward the goal. Collect 10 to win!</p>
-        </a>
-
-        <!-- GAME 4: MEGA LOG HOP -->
-        <a href="log-hop/index.html" class="game-card loghop">
-            <span class="game-icon">🪵</span>
-            <span class="game-title">MEGA LOG HOP</span>
-            <p class="game-desc">Jump across logs and sandbars to reach the party.</p>
-        </a>
-
-        <!-- GAME 5: NEON RACER -->
-        <a href="racer/index.html" class="game-card racer">
-            <span class="game-icon">🏎️</span>
-            <span class="game-title">NEON RACER</span>
-            <p class="game-desc">Click to VROOM! Complete 5 laps to win.</p>
-        </a>
-
-        <!-- GAME 6: MEGA ROCKET -->
-        <a href="rocket/index.html" class="game-card rocket">
-            <span class="game-icon">🚀</span>
-            <span class="game-title">MEGA ROCKET</span>
-            <p class="game-desc">Tap 10 times to build and launch the rocket!</p>
-        </a>
+        <a href="dj-party/index.html" class="game-card dj"><span class="game-icon">🎧</span><span class="game-title">DJ PARTY</span></a>
+        <a href="bubbles/index.html" class="game-card bubbles"><span class="game-icon">🫧</span><span class="game-title">BUBBLE POP</span></a>
+        <a href="snake/index.html" class="game-card snake"><span class="game-icon">🐍</span><span class="game-title">MEGA SNAKE</span></a>
+        <a href="log-hop/index.html" class="game-card loghop"><span class="game-icon">🪵</span><span class="game-title">MEGA LOG HOP</span></a>
+        <a href="racer/index.html" class="game-card racer"><span class="game-icon">🏎️</span><span class="game-title">NEON RACER</span></a>
+        <a href="rocket/index.html" class="game-card rocket"><span class="game-icon">🚀</span><span class="game-title">MEGA ROCKET</span></a>
     </div>
 
     <footer>
-        <p style="color: #999; line-height: 1.6; font-size: 18px;">
-            Accessible one-button experiences designed for students with different abilities.
-        </p>
-        
-        <a href="https://ko-fi.com/nocoast" target="_blank" class="kofi-button">
-            ☕ Support this project on Ko-fi
-        </a>
-
-        <div class="license-text">
-            Released under the MIT License. Free for schools and parents everywhere.
-        </div>
+        <a href="https://ko-fi.com/nocoast" target="_blank" class="kofi-button">☕ Support on Ko-fi</a>
     </footer>
 
+    <script>
+        function updateButton() {
+            const isLow = localStorage.getItem('lowSensory') === 'true';
+            const btn = document.getElementById('sensoryToggle');
+            if (isLow) {
+                btn.innerText = "LOW (No Flashing)";
+                btn.className = "toggle-btn on";
+            } else {
+                btn.innerText = "HIGH (Standard)";
+                btn.className = "toggle-btn off";
+            }
+        }
+
+        function toggleSensory() {
+            const isLow = localStorage.getItem('lowSensory') === 'true';
+            localStorage.setItem('lowSensory', !isLow);
+            updateButton();
+        }
+
+        updateButton(); // Set initial state
+    </script>
 </body>
 </html>
