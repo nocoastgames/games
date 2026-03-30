@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Accessibility Game Hub</title>
+    <title>Student Interaction Hub</title>
     <style>
         body { 
             background-color: #000; color: white; 
@@ -11,76 +11,103 @@
             display: flex; flex-direction: column; align-items: center;
             min-height: 100vh;
         }
-        h1 { color: #00FF00; font-size: 40px; text-align: center; }
         
-        .game-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-            gap: 25px; width: 100%; max-width: 1000px; margin-top: 40px;
-            flex-grow: 1;
+        h1 { 
+            color: #fff; 
+            font-size: clamp(24px, 5vw, 48px); 
+            text-align: center; 
+            margin-bottom: 10px;
+            text-shadow: 0 0 10px #00FF00;
         }
 
-        .game-card {
-            background: #111; border: 5px solid #00FFFF; border-radius: 25px;
-            padding: 40px; text-align: center; text-decoration: none;
-            transition: transform 0.2s;
+        .subtitle {
+            color: #888;
+            margin-bottom: 40px;
+            font-size: 18px;
+            text-align: center;
         }
-        .game-card:hover { transform: scale(1.05); background: #222; }
+        
+        /* THE GRID CONTAINER */
+        .game-grid {
+            display: grid;
+            /* This ensures cards sit side-by-side until the screen gets too small */
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 25px; 
+            width: 100%; 
+            max-width: 1100px; 
+            flex-grow: 1;
+            align-content: start;
+        }
+
+        /* THE GAME CARD BASE */
+        .game-card {
+            background: #111; 
+            border-radius: 30px;
+            padding: 40px 20px; 
+            text-align: center; 
+            text-decoration: none;
+            transition: transform 0.2s, background 0.3s;
+            border: 4px solid transparent;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+
+        .game-card:hover { 
+            transform: scale(1.05); 
+            background: #1a1a1a;
+        }
         
         .game-icon { font-size: 100px; margin-bottom: 20px; display: block; }
-        .game-title { color: #00FFFF; font-size: 32px; font-weight: bold; display: block; }
+        .game-title { font-size: 32px; font-weight: bold; display: block; }
+        .game-desc { color: #888; margin-top: 15px; font-size: 16px; }
+
+        /* INDIVIDUAL NEON COLORS */
+        .dj { border-color: #00FFFF; }
+        .dj .game-title { color: #00FFFF; }
         
+        .bubbles { border-color: #FF00FF; }
+        .bubbles .game-title { color: #FF00FF; }
+
+        .snake { border-color: #00FF00; }
+        .snake .game-title { color: #00FF00; }
+
         /* Teacher / Donation Section */
         footer {
-            margin-top: 50px; padding: 20px; text-align: center;
-            border-top: 1px solid #333; width: 100%; max-width: 600px;
+            margin-top: 60px; padding: 30px; text-align: center;
+            border-top: 1px solid #333; width: 100%; max-width: 800px;
         }
         .kofi-button {
-            background-color: #29abe0; color: white; padding: 10px 20px;
-            text-decoration: none; border-radius: 10px; font-weight: bold;
-            display: inline-block; margin-top: 10px;
+            background-color: #29abe0; color: white; padding: 15px 30px;
+            text-decoration: none; border-radius: 15px; font-weight: bold;
+            display: inline-block; margin-top: 15px;
+            font-size: 18px;
+            transition: background 0.2s;
         }
-        .license-text { font-size: 12px; color: #666; margin-top: 15px; }
+        .kofi-button:hover { background-color: #1a8bb8; }
+        .license-text { font-size: 13px; color: #555; margin-top: 20px; }
     </style>
 </head>
 <body>
 
     <h1>Student Interaction Hub</h1>
+    <p class="subtitle">One-Button Sensory Experiences</p>
 
     <div class="game-grid">
-        <!-- GAME: DJ PARTY -->
-        <a href="dj-party/index.html" class="game-card">
+        <!-- GAME 1: DJ PARTY -->
+        <a href="dj-party/index.html" class="game-card dj">
             <span class="game-icon">🎧</span>
             <span class="game-title">DJ PARTY</span>
+            <p class="game-desc">High energy techno & strobe effects.</p>
         </a>
 
-        <!-- Add more game cards here as you build them -->
         <!-- GAME 2: BUBBLE POP -->
-<a href="bubbles/index.html" class="game-card">
-    <span class="game-icon">🫧</span>
-    <span class="game-title">BUBBLE POP</span>
-    <p class="game-desc"></p>
-</a>
-    </div>
-        <!-- GAME 3: Snake -->
-    <a href="snake/index.html" class="game-card">
-    <span class="game-icon">🐍</span>
-    <span class="game-title">Snake</span>
-    <p class="game-desc"></p>
-</a>
-
-    <footer>
-        <p style="color: #888;">One Button experiences created for students with other abilities.</p>
-        
-        <!-- Replace 'yourlink' with your actual Ko-fi URL -->
-        <a href="https://ko-fi.com/nocoast" target="_blank" class="kofi-button">
-            ☕ Support this project on Ko-fi
+        <a href="bubbles/index.html" class="game-card bubbles">
+            <span class="game-icon">🫧</span>
+            <span class="game-title">BUBBLE POP</span>
+            <p class="game-desc">Calm music & magical visuals.</p>
         </a>
 
-        <div class="license-text">
-            Released under the MIT License. Free for schools and parents.
-        </div>
-    </footer>
-
-</body>
-</html>
+        <!-- GAME 3: MEGA SNAKE -->
+        <a href="snake/index.html" class="game-card snake">
+            <span class="game-icon">🐍</spa
