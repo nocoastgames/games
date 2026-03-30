@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>MEGA LOG HOP - RIVER JOURNEY</title>
+    <title>MEGA LOG HOP - CONTINUOUS STREAM</title>
     <style>
         body { 
             background-color: #000; margin: 0; overflow: hidden; 
@@ -45,7 +45,7 @@
 
     <div id="overlay" onclick="startEngine()">
         <div id="start-btn">START RIVER HOP</div>
-        <p style="margin-top: 20px; color: white; font-size: 20px;">(Jump across lanes and safe sandbars!)</p>
+        <p style="margin-top: 20px; color: white; font-size: 20px;">(Tons of logs! Jump across safely!)</p>
     </div>
 
     <canvas id="gameCanvas"></canvas>
@@ -62,15 +62,14 @@
 
         // --- GAME CONFIGURATION ---
         let riverLanes = 3;
-        let steps = []; // Stores the X position of every bank, lane, and sandbar
+        let steps = []; 
         let frog = { stepIdx: 0, y: 0, targetX: 0, isJumping: false, jumpT: 0 };
-        let logs = [];
+        let laneData = []; // Stores speed, direction, and an array of logs for each lane
         let gameState = "play";
         let bankWidth = 180;
         let sandbarWidth = 80;
         let laneWidth;
 
-        // Particles
         let particles = [], lasers = [];
 
         function startEngine() {
@@ -87,9 +86,8 @@
             canvas.height = window.innerHeight;
             frog.y = canvas.height / 2;
 
-            // Calculate Grid: BankL -> Lane1 -> Bar1 -> Lane2 -> Bar2 -> Lane3 -> BankR
             steps = [];
-            steps.push({ type: 'bank', x: bankWidth/2 }); // Start Bank
+            steps.push({ type: 'bank', x: bankWidth/2 }); 
             
             let remainingWidth = canvas.width - (bankWidth * 2);
             laneWidth = (remainingWidth - (sandbarWidth * (riverLanes-1))) / riverLanes;
@@ -103,7 +101,7 @@
                     currentX += sandbarWidth;
                 }
             }
-            steps.push({ type: 'bank', x: canvas.width - bankWidth/2 }); // Goal Bank
+            steps.push({ type: 'bank', x: canvas.width - bankWidth/2 }); 
         }
 
         function resetGame() {
@@ -111,22 +109,33 @@
             frog.stepIdx = 0;
             frog.x = steps[0].x;
             frog.isJumping = false;
-            logs = [];
-            for(let i=0; i<riverLanes; i++) {
-                spawnLog(i);
-            }
-        }
+            laneData = [];
 
-        function spawnLog(laneIdx) {
-            logs.push({
-                laneIdx: laneIdx,
-                y: Math.random() * canvas.height,
-                w: laneWidth * 0.8,
-                h: canvas.height * 0.45, // --- LONGER LOGS ---
-                speed: 1.2 + Math.random() * 1.5, // --- SLOWER LOGS ---
-                dir: Math.random() > 0.5 ? 1 : -1,
-                color: `hsl(${30 + laneIdx * 40}, 100%, 50%)`
-            });
+            const logH = canvas.height * 0.5; // Very long logs
+            const gapH = 100; // Small gaps
+
+            for(let i=0; i<riverLanes; i++) {
+                let dir = Math.random() > 0.5 ? 1 : -1;
+                let speed = 1.0 + Math.random() * 1.2;
+                let logsInLane = [];
+                
+                // Fill the vertical space with logs
+                let currentY = -logH;
+                while (currentY < canvas.height + logH) {
+                    logsInLane.push({ y: currentY, h: logH });
+                    currentY += logH + gapH;
+                }
+
+                laneData.push({
+                    laneIdx: i,
+                    speed: speed,
+                    dir: dir,
+                    logs: logsInLane,
+                    logH: logH,
+                    gapH: gapH,
+                    color: `hsl(${30 + i * 45}, 100%, 50%)`
+                });
+            }
         }
 
         function handleInput(event) {
@@ -183,31 +192,41 @@
             // Draw Banks and Sandbars
             steps.forEach(step => {
                 if (step.type === 'bank') {
-                    ctx.fillStyle = '#333'; // Dark Stone
+                    ctx.fillStyle = '#333';
                     ctx.fillRect(step.x - bankWidth/2, 0, bankWidth, canvas.height);
                     ctx.strokeStyle = '#555'; ctx.lineWidth = 4;
                     ctx.strokeRect(step.x - bankWidth/2, 0, bankWidth, canvas.height);
                 } else if (step.type === 'sandbar') {
-                    ctx.fillStyle = 'rgba(255, 140, 0, 0.2)'; // Glowing Sand
+                    ctx.fillStyle = 'rgba(255, 140, 0, 0.2)';
                     ctx.fillRect(step.x - sandbarWidth/2, 0, sandbarWidth, canvas.height);
                     ctx.strokeStyle = '#FF8C00'; ctx.lineWidth = 2;
                     ctx.strokeRect(step.x - sandbarWidth/2, 0, sandbarWidth, canvas.height);
                 }
             });
 
-            // Update & Draw Logs
-            logs.forEach(log => {
-                log.y += log.speed * log.dir;
-                if (log.y > canvas.height + log.h) log.y = -log.h;
-                if (log.y < -log.h) log.y = canvas.height + log.h;
+            // Update & Draw Logs (Streams)
+            laneData.forEach(lane => {
+                let laneX = steps.find(s => s.laneIdx === lane.laneIdx).x;
+                let logW = laneWidth * 0.85;
 
-                let laneX = steps.find(s => s.laneIdx === log.laneIdx).x;
-                ctx.fillStyle = log.color;
-                ctx.beginPath();
-                ctx.roundRect(laneX - log.w/2, log.y, log.w, log.h, 25);
-                ctx.fill();
-                ctx.fillStyle = 'rgba(255,255,255,0.15)';
-                ctx.fillRect(laneX - log.w/2, log.y + 20, log.w, 20);
+                lane.logs.forEach(log => {
+                    log.y += lane.speed * lane.dir;
+
+                    // Wrap logs around the screen
+                    const totalLoop = lane.logH + lane.gapH;
+                    if (lane.dir === 1 && log.y > canvas.height + 100) {
+                        log.y -= (lane.logs.length * totalLoop);
+                    } else if (lane.dir === -1 && log.y < -lane.logH - 100) {
+                        log.y += (lane.logs.length * totalLoop);
+                    }
+
+                    ctx.fillStyle = lane.color;
+                    ctx.beginPath();
+                    ctx.roundRect(laneX - logW/2, log.y, logW, lane.logH, 25);
+                    ctx.fill();
+                    ctx.fillStyle = 'rgba(255,255,255,0.15)';
+                    ctx.fillRect(laneX - logW/2, log.y + 20, logW, 20);
+                });
             });
 
             // Update Frog
@@ -249,9 +268,10 @@
             }
 
             if (currentStep.type === 'lane') {
-                let log = logs.find(l => l.laneIdx === currentStep.laneIdx);
-                // Check if frog Y is within log Y range
-                if (frog.y < log.y || frog.y > log.y + log.h) {
+                let lane = laneData.find(l => l.laneIdx === currentStep.laneIdx);
+                let onAnyLog = lane.logs.some(log => frog.y >= log.y && frog.y <= log.y + lane.logH);
+
+                if (!onAnyLog) {
                     gameState = "lose";
                     playSynth('splash', 0.5);
                     if (navigator.vibrate) navigator.vibrate([100, 50, 100]);
