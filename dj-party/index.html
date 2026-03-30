@@ -5,85 +5,33 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>MEGA PARTY DJ</title>
     <style>
-        body { 
-            background-color: #000; margin: 0; overflow: hidden; 
-            display: flex; flex-direction: column; justify-content: center; 
-            align-items: center; height: 100vh; font-family: sans-serif;
-            user-select: none; touch-action: manipulation;
-        }
-
-        /* 🏠 THE UNOBTRUSIVE HOME BUTTON */
-        #home-button {
-            position: fixed; top: 15px; left: 15px; z-index: 1000;
-            color: white; text-decoration: none; font-size: 24px;
-            background: rgba(255, 255, 255, 0.1); /* Very faint */
-            padding: 10px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.2);
-            opacity: 0.3; /* Mostly see-through */
-            transition: opacity 0.3s, background 0.3s;
-        }
-        #home-button:hover {
-            opacity: 1.0; background: rgba(255, 255, 255, 0.3);
-        }
-
-        /* START OVERLAY */
-        #overlay {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: #000; color: #00FF00; display: flex; 
-            flex-direction: column; justify-content: center; align-items: center; 
-            z-index: 100; cursor: pointer; text-align: center;
-        }
-        #start-btn {
-            font-size: 50px; padding: 30px 60px; border: 8px solid #00FF00;
-            background: transparent; color: #00FF00; font-weight: bold;
-            border-radius: 20px; box-shadow: 0 0 30px #00FF00;
-        }
-
-        /* MAIN CHARACTER */
-        #dj-character { 
-            font-size: 200px; z-index: 50; 
-            transition: transform 0.05s ease-out; 
-            filter: drop-shadow(0 0 20px rgba(255,255,255,0.5));
-        }
+        body { background-color: #000; margin: 0; overflow: hidden; display: flex; flex-direction: column; justify-content: center; align-items: center; height: 100vh; font-family: sans-serif; user-select: none; touch-action: manipulation; }
         
-        #flash {
-            position: fixed; top:0; left:0; width:100%; height:100%;
-            opacity: 0; z-index: 0; pointer-events: none;
-        }
+        #home-button { position: fixed; top: 15px; left: 15px; z-index: 1000; color: white; text-decoration: none; font-size: 24px; background: rgba(255, 255, 255, 0.1); padding: 10px; border-radius: 10px; opacity: 0.3; transition: opacity 0.3s; }
+        #home-button:hover { opacity: 1.0; background: rgba(255, 255, 255, 0.3); }
 
-        /* VISUAL EFFECTS */
-        .bubble {
-            position: absolute; border: 5px solid white; border-radius: 50%;
-            pointer-events: none; z-index: 10; animation: bubble-grow 0.6s ease-out forwards;
-        }
-        @keyframes bubble-grow {
-            0% { width: 0; height: 0; opacity: 1; }
-            100% { width: 500px; height: 500px; opacity: 0; }
-        }
+        #overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #000; color: #00FF00; display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 100; cursor: pointer; }
+        #start-btn { font-size: 50px; padding: 30px 60px; border: 8px solid #00FF00; border-radius: 20px; box-shadow: 0 0 30px #00FF00; font-weight: bold; }
 
-        .laser {
-            position: absolute; height: 10px; background: white;
-            pointer-events: none; z-index: 5; border-radius: 5px;
-            box-shadow: 0 0 15px white;
-        }
+        #dj-character { font-size: 200px; z-index: 50; transition: transform 0.05s ease-out; }
+        #flash { position: fixed; top:0; left:0; width:100%; height:100%; opacity: 0; z-index: 0; pointer-events: none; }
 
-        .particle {
-            position: absolute; width: 15px; height: 15px; border-radius: 50%;
-            pointer-events: none; z-index: 20;
-        }
-
-        h1 { color: #fff; position: absolute; bottom: 20px; letter-spacing: 5px; z-index: 60; text-shadow: 0 0 10px #000; }
+        /* Effects */
+        .bubble { position: absolute; border: 5px solid white; border-radius: 50%; pointer-events: none; z-index: 10; animation: bubble-grow 0.6s ease-out forwards; }
+        @keyframes bubble-grow { 0% { width: 0; height: 0; opacity: 1; } 100% { width: 500px; height: 500px; opacity: 0; } }
+        .laser { position: absolute; height: 10px; background: white; pointer-events: none; z-index: 5; border-radius: 5px; box-shadow: 0 0 15px white; }
+        .particle { position: absolute; width: 15px; height: 15px; border-radius: 50%; pointer-events: none; z-index: 20; }
+        h1 { color: #fff; position: absolute; bottom: 20px; letter-spacing: 5px; z-index: 60; text-shadow: 0 0 10px #000; opacity: 0.5; }
     </style>
 </head>
 <body onmousedown="handleInput(event)" onkeydown="handleInput(event)">
 
-    <!-- HOME BUTTON (Links back to the main folder) -->
     <a id="home-button" href="../index.html">🏠</a>
-
     <div id="flash"></div>
 
     <div id="overlay" onclick="startEngine()">
         <div id="start-btn">START PARTY</div>
-        <p style="margin-top: 20px; color: white;">(Music + Visuals + Synth)</p>
+        <p style="margin-top: 20px; color: white;">(Cause and Effect DJ)</p>
     </div>
 
     <div id="dj-character">🎧</div>
@@ -94,128 +42,96 @@
     </audio>
 
     <script>
-        let audioCtx;
-        let isStarted = false;
-        let lastPressTime = 0;
-        const cooldown = 180;
+        let audioCtx, isStarted = false;
+        let lastPressTime = 0, cooldown = 180;
         const colors = ['#FF00FF', '#00FFFF', '#00FF00', '#FFFF00', '#FF0000', '#FFFFFF'];
 
-        const dj = document.getElementById('dj-character');
-        const bgBeat = document.getElementById('bg-beat');
-        const overlay = document.getElementById('overlay');
-        const flash = document.getElementById('flash');
+        // --- THE SENSORY CHECK ---
+        const lowSensoryMode = localStorage.getItem('lowSensory') === 'true';
 
         function startEngine() {
             audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            const bgBeat = document.getElementById('bg-beat');
             bgBeat.volume = 0.2;
             bgBeat.play();
-            overlay.style.display = 'none';
+            document.getElementById('overlay').style.display = 'none';
             isStarted = true;
         }
 
         function playSynthSound(type) {
             const osc = audioCtx.createOscillator();
             const gain = audioCtx.createGain();
-            osc.connect(gain);
-            gain.connect(audioCtx.destination);
+            osc.connect(gain); gain.connect(audioCtx.destination);
             const now = audioCtx.currentTime;
-
             if (type === 'kick') {
-                osc.frequency.setValueAtTime(150, now);
-                osc.frequency.exponentialRampToValueAtTime(0.01, now + 0.4);
-                gain.gain.setValueAtTime(1, now);
-                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.4);
+                osc.frequency.setValueAtTime(150, now); osc.frequency.exponentialRampToValueAtTime(0.01, now + 0.4);
+                gain.gain.setValueAtTime(1, now); gain.gain.exponentialRampToValueAtTime(0.01, now + 0.4);
                 osc.start(); osc.stop(now + 0.4);
-            } else if (type === 'laser') {
-                osc.type = 'sawtooth';
-                osc.frequency.setValueAtTime(1000, now);
-                osc.frequency.exponentialRampToValueAtTime(50, now + 0.2);
-                gain.gain.setValueAtTime(0.5, now);
-                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.2);
-                osc.start(); osc.stop(now + 0.2);
             } else {
-                osc.frequency.setValueAtTime(400, now);
-                gain.gain.setValueAtTime(0.5, now);
+                osc.frequency.setValueAtTime(400, now); gain.gain.setValueAtTime(0.5, now);
                 gain.gain.exponentialRampToValueAtTime(0.01, now + 0.1);
                 osc.start(); osc.stop(now + 0.1);
             }
         }
 
         function handleInput(event) {
-            // Prevent the home button from being "clicked" by a keyboard press
-            if (event.target.id === 'home-button') return;
-
-            if (!isStarted) return;
+            if (event.target.id === 'home-button' || !isStarted) return;
             if (event.type === 'keydown' && event.code !== "Space" && event.code !== "Enter") return;
-
             const now = Date.now();
             if (now - lastPressTime < cooldown) return;
             lastPressTime = now;
-
             triggerAction();
         }
 
         function triggerAction() {
-            const sounds = ['kick', 'laser', 'blip'];
-            playSynthSound(sounds[Math.floor(Math.random() * sounds.length)]);
+            playSynthSound(Math.random() > 0.5 ? 'kick' : 'blip');
 
+            const dj = document.getElementById('dj-character');
             dj.style.transform = "scale(2.5) rotate(" + (Math.random() * 40 - 20) + "deg)";
             
-            const randomColor = colors[Math.floor(Math.random() * colors.length)];
-            flash.style.backgroundColor = randomColor;
-            flash.style.opacity = "0.7";
-
-            createBubbles(randomColor);
-            createLasers(randomColor);
-            createFirework(randomColor);
+            // --- ONLY FLASH AND DO LASERS IF NOT IN LOW SENSORY MODE ---
+            if (!lowSensoryMode) {
+                const randomColor = colors[Math.floor(Math.random() * colors.length)];
+                const flash = document.getElementById('flash');
+                flash.style.backgroundColor = randomColor;
+                flash.style.opacity = "0.7";
+                
+                createBubbles(randomColor);
+                createLasers(randomColor);
+                createFirework(randomColor);
+            }
 
             setTimeout(() => {
                 dj.style.transform = "scale(1.0) rotate(0deg)";
-                flash.style.opacity = "0";
+                if (!lowSensoryMode) document.getElementById('flash').style.opacity = "0";
             }, 100);
 
             if (navigator.vibrate) navigator.vibrate(50);
         }
 
+        // Effects functions remain same but are only called if !lowSensoryMode
         function createBubbles(color) {
-            const b = document.createElement('div');
-            b.className = 'bubble';
-            b.style.borderColor = color;
-            b.style.left = (window.innerWidth/2) + "px";
-            b.style.top = (window.innerHeight/2) + "px";
-            b.style.transform = "translate(-50%, -50%)";
-            document.body.appendChild(b);
+            const b = document.createElement('div'); b.className = 'bubble'; b.style.borderColor = color;
+            b.style.left = (window.innerWidth/2) + "px"; b.style.top = (window.innerHeight/2) + "px";
+            b.style.transform = "translate(-50%, -50%)"; document.body.appendChild(b);
             setTimeout(() => b.remove(), 600);
         }
-
         function createLasers(color) {
             for(let i=0; i<4; i++) {
-                const l = document.createElement('div');
-                l.className = 'laser';
-                l.style.width = (window.innerWidth) + "px";
-                l.style.backgroundColor = color;
-                l.style.left = "50%"; l.style.top = "50%";
-                l.style.transformOrigin = "left center";
+                const l = document.createElement('div'); l.className = 'laser';
+                l.style.width = (window.innerWidth) + "px"; l.style.backgroundColor = color;
+                l.style.left = "50%"; l.style.top = "50%"; l.style.transformOrigin = "left center";
                 l.style.transform = `rotate(${i * 90 + Math.random()*20}deg)`;
-                document.body.appendChild(l);
-                setTimeout(() => l.remove(), 150);
+                document.body.appendChild(l); setTimeout(() => l.remove(), 150);
             }
         }
-
         function createFirework(color) {
             for(let i=0; i<12; i++) {
-                const p = document.createElement('div');
-                p.className = 'particle';
-                p.style.backgroundColor = color;
+                const p = document.createElement('div'); p.className = 'particle'; p.style.backgroundColor = color;
                 p.style.left = "50%"; p.style.top = "50%";
-                const angle = Math.random() * Math.PI * 2;
-                const dist = 100 + Math.random() * 300;
-                p.animate([
-                    { transform: 'translate(-50%, -50%) scale(1)', opacity: 1 },
-                    { transform: `translate(${Math.cos(angle)*dist}px, ${Math.sin(angle)*dist}px) scale(0)`, opacity: 0 }
-                ], { duration: 500, easing: 'ease-out' });
-                document.body.appendChild(p);
-                setTimeout(() => p.remove(), 500);
+                const angle = Math.random() * Math.PI * 2, dist = 100 + Math.random() * 300;
+                p.animate([{ transform: 'translate(-50%, -50%) scale(1)', opacity: 1 }, { transform: `translate(${Math.cos(angle)*dist}px, ${Math.sin(angle)*dist}px) scale(0)`, opacity: 0 }], { duration: 500 });
+                document.body.appendChild(p); setTimeout(() => p.remove(), 500);
             }
         }
     </script>
