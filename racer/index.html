@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>NEON RACER - MEGA BOOST</title>
+    <title>NEON RACER - OVAL CIRCUIT</title>
     <style>
         body { 
             background-color: #000; margin: 0; overflow: hidden; 
@@ -30,16 +30,16 @@
         #win-overlay { background: rgba(0,0,0,0.9); display: none; z-index: 200; }
 
         .btn-ui {
-            font-size: 50px; padding: 30px 60px; border: 8px solid #00FFFF;
-            background: transparent; color: #00FFFF; font-weight: bold;
-            border-radius: 20px; box-shadow: 0 0 30px #00FFFF;
+            font-size: 50px; padding: 30px 60px; border: 8px solid #FFD700;
+            background: transparent; color: #FFD700; font-weight: bold;
+            border-radius: 20px; box-shadow: 0 0 30px #FFD700;
         }
 
         canvas { display: block; z-index: 10; }
         #flash { position: fixed; top:0; left:0; width:100%; height:100%; opacity: 0; z-index: 150; pointer-events: none; }
         
-        #hud { position: absolute; top: 20px; right: 20px; color: #00FFFF; font-size: 30px; font-weight: bold; z-index: 50; }
-        h1 { color: #00FFFF; position: absolute; bottom: 20px; letter-spacing: 10px; opacity: 0.4; pointer-events: none; }
+        #hud { position: absolute; top: 20px; right: 20px; color: #FFD700; font-size: 30px; font-weight: bold; z-index: 50; }
+        h1 { color: #FFD700; position: absolute; bottom: 20px; letter-spacing: 10px; opacity: 0.4; pointer-events: none; }
     </style>
 </head>
 <body onmousedown="handleInput(event)" onkeydown="handleInput(event)">
@@ -49,51 +49,49 @@
 
     <div id="overlay" onclick="startEngine()">
         <div class="btn-ui">START RACING</div>
-        <p style="margin-top: 20px; color: white; font-size: 24px;">(Tap to VROOM!)</p>
+        <p style="margin-top: 20px; color: white; font-size: 24px;">(Pump Switch for Speed!)</p>
     </div>
 
     <div id="win-overlay">
-        <h2 style="color: #00FFFF; font-size: 80px; margin: 0;">CHAMPION!</h2>
+        <h2 id="win-title" style="color: #FFD700; font-size: 80px; margin: 0;">CHAMPION!</h2>
         <p style="color: white; font-size: 30px;">5 LAPS COMPLETE!</p>
     </div>
 
-    <div id="hud">Lap: 1/5</div>
+    <div id="hud">Lap: 0/5</div>
     <canvas id="gameCanvas"></canvas>
-    <h1>NEON RACER</h1>
-
-    <audio id="bg-beat" loop preload="auto">
-        <source src="https://www.soundhelix.com/examples/mp3/SoundHelix-Song-15.mp3" type="audio/mpeg">
-    </audio>
+    <h1>OVAL CIRCUIT</h1>
 
     <script>
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
-        const bgBeat = document.getElementById('bg-beat');
         const flash = document.getElementById('flash');
         const hud = document.getElementById('hud');
         const winOverlay = document.getElementById('win-overlay');
         
         let audioCtx, isStarted = false, gameState = "play";
-        let lastPressTime = 0, cooldown = 100;
+        let lastPressTime = 0, cooldown = 120;
 
-        // Racer State
-        let car = { x: -200, y: 0, speed: 0, targetY: 0, boost: 1 };
-        let laps = 1;
-        let trackPos = 0;
+        // Circuit Logic
+        let car = { angle: 0, speed: 0, boost: 1 };
+        let laps = 0;
+        let themeHue = 180; // Start Cyan
+        let ovalW, ovalH;
+        
         let particles = [], lasers = [];
-        let themeHue = 180; // Cyan start
 
         function startEngine() {
             audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-            canvas.width = window.innerWidth;
-            canvas.height = window.innerHeight;
-            car.y = canvas.height / 2;
-            car.targetY = car.y;
-            bgBeat.volume = 0.2;
-            bgBeat.play();
+            resize();
             document.getElementById('overlay').style.display = 'none';
             isStarted = true;
             requestAnimationFrame(gameLoop);
+        }
+
+        function resize() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+            ovalW = canvas.width * 0.35;
+            ovalH = canvas.height * 0.3;
         }
 
         function handleInput(event) {
@@ -105,12 +103,12 @@
             if (now - lastPressTime < cooldown) return;
             lastPressTime = now;
 
-            // --- THE ACTION ---
-            car.speed += 25; // Big burst of speed
-            car.boost = 1.8; // Car grows when boosting
+            // Providing a burst of rotational speed
+            car.speed += 0.08; 
+            car.boost = 1.6;
             
             playRevSound();
-            flashScreen(`hsla(${themeHue}, 100%, 50%, 0.3)`, 100);
+            flashScreen(`hsla(${themeHue}, 100%, 50%, 0.3)`, 80);
         }
 
         function playRevSound() {
@@ -118,21 +116,18 @@
             const gain = audioCtx.createGain();
             osc.connect(gain); gain.connect(audioCtx.destination);
             const now = audioCtx.currentTime;
-            
-            // Sliding pitch up for "VROOM"
-            osc.frequency.setValueAtTime(100, now);
-            osc.frequency.exponentialRampToValueAtTime(400, now + 0.2);
-            
-            gain.gain.setValueAtTime(0.4, now);
-            gain.gain.exponentialRampToValueAtTime(0.01, now + 0.3);
-            osc.start(); osc.stop(now + 0.3);
+            osc.frequency.setValueAtTime(100 + (car.speed * 500), now);
+            osc.frequency.exponentialRampToValueAtTime(400 + (car.speed * 500), now + 0.15);
+            gain.gain.setValueAtTime(0.3, now);
+            gain.gain.exponentialRampToValueAtTime(0.01, now + 0.2);
+            osc.start(); osc.stop(now + 0.2);
         }
 
         function flashScreen(color, time) {
             flash.style.backgroundColor = color;
             flash.style.opacity = 1;
             setTimeout(() => flash.style.opacity = 0, time);
-            if (navigator.vibrate) navigator.vibrate(60);
+            if (navigator.vibrate) navigator.vibrate(50);
         }
 
         function gameLoop() {
@@ -140,77 +135,109 @@
             ctx.fillRect(0, 0, canvas.width, canvas.height);
 
             if (gameState === "play") {
-                // Physics
-                car.x += car.speed;
-                car.speed *= 0.96; // Friction (slows down over time)
+                let oldAngle = car.angle;
+                car.angle += car.speed;
+                car.speed *= 0.97; // Friction
                 if (car.boost > 1) car.boost -= 0.05;
 
-                // Move Track (illusion of speed)
-                trackPos -= car.speed;
-
-                // Check for Lap Complete
-                if (car.x > canvas.width + 200) {
-                    car.x = -200;
-                    laps++;
-                    themeHue = (themeHue + 60) % 360; // Change world color
-                    if (laps > 5) {
-                        winSequence();
-                    } else {
-                        hud.innerText = `Lap: ${laps}/5`;
-                        playSynthWin();
-                    }
+                // Detect Finish Line Cross (Crossing 0 / 2*PI)
+                // In math, 0 is at 3 o'clock.
+                if (oldAngle < Math.PI * 2 && car.angle >= Math.PI * 2) {
+                    car.angle -= Math.PI * 2;
+                    crossFinishLine();
                 }
             }
 
             drawTrack();
+            drawFinishLine();
             drawCar();
             drawEffects();
 
             requestAnimationFrame(gameLoop);
         }
 
-        function drawTrack() {
-            // Draw Road Lines
-            ctx.strokeStyle = `hsla(${themeHue}, 100%, 50%, 0.5)`;
-            ctx.lineWidth = 10;
-            ctx.setLineDash([60, 40]);
-            ctx.lineDashOffset = trackPos;
+        function crossFinishLine() {
+            laps++;
+            themeHue = (themeHue + 70) % 360; // Instant Color Shift
+            hud.style.color = `hsl(${themeHue}, 100%, 50%)`;
             
+            if (laps >= 5) {
+                winSequence();
+            } else {
+                hud.innerText = `Lap: ${laps}/5`;
+                playWinSynth();
+                megaCelebration(canvas.width/2 + ovalW, canvas.height/2);
+            }
+        }
+
+        function drawTrack() {
+            ctx.strokeStyle = `hsl(${themeHue}, 100%, 50%)`;
+            ctx.lineWidth = 80;
+            ctx.lineCap = "round";
             ctx.beginPath();
-            ctx.moveTo(0, canvas.height * 0.3);
-            ctx.lineTo(canvas.width, canvas.height * 0.3);
+            ctx.ellipse(canvas.width/2, canvas.height/2, ovalW, ovalH, 0, 0, Math.PI * 2);
             ctx.stroke();
 
-            ctx.beginPath();
-            ctx.moveTo(0, canvas.height * 0.7);
-            ctx.lineTo(canvas.width, canvas.height * 0.7);
+            // Inner line for "Neon" look
+            ctx.strokeStyle = "black";
+            ctx.lineWidth = 60;
             ctx.stroke();
-            ctx.setLineDash([]);
+            
+            ctx.strokeStyle = `hsl(${themeHue}, 100%, 80%)`;
+            ctx.lineWidth = 4;
+            ctx.stroke();
+        }
+
+        function drawFinishLine() {
+            // Drawn at the 0 angle (3 o'clock)
+            const fx = canvas.width/2 + ovalW;
+            const fy = canvas.height/2;
+            const size = 80;
+
+            ctx.save();
+            ctx.translate(fx, fy);
+            // Checkerboard pattern
+            const rows = 4;
+            const cols = 2;
+            const step = size / rows;
+            for(let r=0; r<rows; r++) {
+                for(let c=0; c<cols; c++) {
+                    ctx.fillStyle = (r + c) % 2 === 0 ? "white" : "black";
+                    ctx.fillRect(c * (size/2) - size/2, r * step - size/2, size/2, step);
+                }
+            }
+            ctx.restore();
         }
 
         function drawCar() {
+            const cx = canvas.width/2 + Math.cos(car.angle) * ovalW;
+            const cy = canvas.height/2 + Math.sin(car.angle) * ovalH;
+
+            // Calculate rotation to face the direction of the oval tangent
+            // Tangent of an ellipse (x=a cos t, y=b sin t) is (-a sin t, b cos t)
+            const tx = -ovalW * Math.sin(car.angle);
+            const ty = ovalH * Math.cos(car.angle);
+            const rotation = Math.atan2(ty, tx);
+
             ctx.save();
-            ctx.translate(car.x, car.y);
+            ctx.translate(cx, cy);
+            ctx.rotate(rotation);
             ctx.scale(car.boost, car.boost);
 
             // Car Body
             ctx.fillStyle = `hsl(${themeHue}, 100%, 50%)`;
-            ctx.shadowBlur = 20; ctx.shadowColor = `hsl(${themeHue}, 100%, 50%)`;
+            ctx.shadowBlur = 15; ctx.shadowColor = "white";
             ctx.beginPath();
-            ctx.roundRect(-80, -40, 160, 80, 20);
+            ctx.roundRect(-30, -20, 60, 40, 10);
             ctx.fill();
-
+            
             // Cockpit
             ctx.fillStyle = "black";
-            ctx.beginPath();
-            ctx.roundRect(-30, -25, 70, 50, 10);
-            ctx.fill();
+            ctx.fillRect(-10, -12, 25, 24);
 
-            // Headlights
-            ctx.fillStyle = "white";
-            ctx.shadowBlur = 15; ctx.shadowColor = "white";
-            ctx.fillRect(60, -35, 20, 15);
-            ctx.fillRect(60, 20, 20, 15);
+            // Spoiler
+            ctx.fillStyle = `hsl(${themeHue}, 100%, 30%)`;
+            ctx.fillRect(-35, -18, 10, 36);
 
             ctx.restore();
             ctx.shadowBlur = 0;
@@ -219,17 +246,18 @@
         function winSequence() {
             gameState = "win";
             winOverlay.style.display = 'flex';
-            playSynthWin();
+            document.getElementById('win-title').style.color = `hsl(${themeHue}, 100%, 50%)`;
             
             let winTimer = setInterval(() => {
                 megaCelebration(Math.random()*canvas.width, Math.random()*canvas.height);
-            }, 300);
+                playWinSynth();
+            }, 400);
 
             setTimeout(() => {
                 clearInterval(winTimer);
-                laps = 1;
-                hud.innerText = `Lap: ${laps}/5`;
-                car.x = -200;
+                laps = 0;
+                hud.innerText = `Lap: 0/5`;
+                car.angle = 0;
                 car.speed = 0;
                 gameState = "play";
                 winOverlay.style.display = 'none';
@@ -238,29 +266,30 @@
 
         function megaCelebration(x, y) {
             flashScreen("white", 150);
-            for(let i=0; i<8; i++) lasers.push({x: x, y: y, angle: (i * 45) * Math.PI/180, life: 1});
-            for(let i=0; i<20; i++) particles.push({
-                x: x, y: y, vx: (Math.random()-0.5) * 30, vy: (Math.random()-0.5) * 30, 
+            for(let i=0; i<10; i++) lasers.push({x: x, y: y, angle: Math.random() * Math.PI * 2, life: 1});
+            for(let i=0; i<25; i++) particles.push({
+                x: x, y: y, vx: (Math.random()-0.5) * 20, vy: (Math.random()-0.5) * 20, 
                 life: 1, color: `hsl(${Math.random()*360}, 100%, 50%)`
             });
         }
 
-        function playSynthWin() {
+        function playWinSynth() {
+            if(!audioCtx) return;
             const osc = audioCtx.createOscillator();
             const gain = audioCtx.createGain();
             osc.connect(gain); gain.connect(audioCtx.destination);
-            osc.type = 'sawtooth';
-            osc.frequency.setValueAtTime(200, audioCtx.currentTime);
-            osc.frequency.exponentialRampToValueAtTime(1200, audioCtx.currentTime + 0.5);
-            gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
-            gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.5);
-            osc.start(); osc.stop(audioCtx.currentTime + 0.5);
+            osc.type = 'square';
+            osc.frequency.setValueAtTime(300, audioCtx.currentTime);
+            osc.frequency.exponentialRampToValueAtTime(900, audioCtx.currentTime + 0.4);
+            gain.gain.setValueAtTime(0.2, audioCtx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.4);
+            osc.start(); osc.stop(audioCtx.currentTime + 0.4);
         }
 
         function drawEffects() {
             lasers.forEach(l => {
                 ctx.strokeStyle = `hsla(${themeHue}, 100%, 70%, ${l.life})`;
-                ctx.lineWidth = 20 * l.life;
+                ctx.lineWidth = 15 * l.life;
                 ctx.beginPath(); ctx.moveTo(l.x, l.y);
                 ctx.lineTo(l.x + Math.cos(l.angle) * 2000, l.y + Math.sin(l.angle) * 2000);
                 ctx.stroke();
@@ -268,13 +297,15 @@
             });
             particles.forEach(p => {
                 ctx.fillStyle = p.color; ctx.globalAlpha = p.life;
-                ctx.beginPath(); ctx.arc(p.x, p.y, 10, 0, Math.PI*2); ctx.fill();
+                ctx.beginPath(); ctx.arc(p.x, p.y, 8, 0, Math.PI*2); ctx.fill();
                 p.x += p.vx; p.y += p.vy; p.life -= 0.02;
             });
             lasers = lasers.filter(l => l.life > 0);
             particles = particles.filter(p => p.life > 0);
             ctx.globalAlpha = 1;
         }
+
+        window.onresize = resize;
     </script>
 </body>
 </html>
