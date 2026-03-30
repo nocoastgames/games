@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>MEGA LOG HOP - CONTINUOUS STREAM</title>
+    <title>MEGA LOG HOP - STICKY FROG</title>
     <style>
         body { 
             background-color: #000; margin: 0; overflow: hidden; 
@@ -60,11 +60,10 @@
         let lastPressTime = 0;
         const cooldown = 300;
 
-        // --- GAME CONFIGURATION ---
         let riverLanes = 3;
         let steps = []; 
-        let frog = { stepIdx: 0, y: 0, targetX: 0, isJumping: false, jumpT: 0 };
-        let laneData = []; // Stores speed, direction, and an array of logs for each lane
+        let frog = { stepIdx: 0, x: 0, y: 0, targetX: 0, isJumping: false, jumpT: 0 };
+        let laneData = []; 
         let gameState = "play";
         let bankWidth = 180;
         let sandbarWidth = 80;
@@ -88,7 +87,6 @@
 
             steps = [];
             steps.push({ type: 'bank', x: bankWidth/2 }); 
-            
             let remainingWidth = canvas.width - (bankWidth * 2);
             laneWidth = (remainingWidth - (sandbarWidth * (riverLanes-1))) / riverLanes;
 
@@ -108,18 +106,18 @@
             gameState = "play";
             frog.stepIdx = 0;
             frog.x = steps[0].x;
+            frog.y = canvas.height / 2;
             frog.isJumping = false;
             laneData = [];
 
-            const logH = canvas.height * 0.5; // Very long logs
-            const gapH = 100; // Small gaps
+            const logH = canvas.height * 0.55; 
+            const gapH = 120; 
 
             for(let i=0; i<riverLanes; i++) {
                 let dir = Math.random() > 0.5 ? 1 : -1;
-                let speed = 1.0 + Math.random() * 1.2;
+                let speed = 1.2 + Math.random() * 1.5;
                 let logsInLane = [];
                 
-                // Fill the vertical space with logs
                 let currentY = -logH;
                 while (currentY < canvas.height + logH) {
                     logsInLane.push({ y: currentY, h: logH });
@@ -154,6 +152,7 @@
             frog.isJumping = true;
             frog.jumpT = 0;
             frog.oldX = frog.x;
+            frog.oldY = frog.y; // Capture Y to prevent mid-air drifting
             frog.stepIdx++;
             frog.targetX = steps[frog.stepIdx].x;
             playSynth('jump', 0.2);
@@ -189,7 +188,7 @@
             ctx.fillStyle = '#050515';
             ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-            // Draw Banks and Sandbars
+            // Draw Background Areas
             steps.forEach(step => {
                 if (step.type === 'bank') {
                     ctx.fillStyle = '#333';
@@ -204,15 +203,13 @@
                 }
             });
 
-            // Update & Draw Logs (Streams)
+            // Update & Draw Logs
             laneData.forEach(lane => {
                 let laneX = steps.find(s => s.laneIdx === lane.laneIdx).x;
                 let logW = laneWidth * 0.85;
 
                 lane.logs.forEach(log => {
                     log.y += lane.speed * lane.dir;
-
-                    // Wrap logs around the screen
                     const totalLoop = lane.logH + lane.gapH;
                     if (lane.dir === 1 && log.y > canvas.height + 100) {
                         log.y -= (lane.logs.length * totalLoop);
@@ -229,12 +226,29 @@
                 });
             });
 
-            // Update Frog
+            // --- STICKY FROG LOGIC ---
+            if (!frog.isJumping && gameState === "play") {
+                let currentStep = steps[frog.stepIdx];
+                if (currentStep.type === 'lane') {
+                    let lane = laneData.find(l => l.laneIdx === currentStep.laneIdx);
+                    // Move the frog vertically with the log
+                    frog.y += lane.speed * lane.dir;
+
+                    // Lose if the student drifts off screen
+                    if (frog.y < -40 || frog.y > canvas.height + 40) {
+                        gameState = "lose";
+                        playSynth('splash', 0.5);
+                    }
+                }
+            }
+
+            // Update Frog Jump
             if (frog.isJumping) {
                 frog.jumpT += 0.06;
                 let arc = Math.sin(frog.jumpT * Math.PI) * 120;
                 frog.x = frog.oldX + (frog.targetX - frog.oldX) * frog.jumpT;
-                drawFrog(frog.x, frog.y - arc);
+                // Mid-air Y remains locked to where it started to avoid weird diagonal jumping
+                drawFrog(frog.x, frog.oldY - arc);
 
                 if (frog.jumpT >= 1) {
                     frog.x = frog.targetX;
