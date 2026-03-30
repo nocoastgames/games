@@ -12,6 +12,19 @@
             user-select: none; touch-action: manipulation;
         }
 
+        /* 🏠 THE UNOBTRUSIVE HOME BUTTON */
+        #home-button {
+            position: fixed; top: 15px; left: 15px; z-index: 1000;
+            color: white; text-decoration: none; font-size: 24px;
+            background: rgba(255, 255, 255, 0.1); /* Very faint */
+            padding: 10px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.2);
+            opacity: 0.3; /* Mostly see-through */
+            transition: opacity 0.3s, background 0.3s;
+        }
+        #home-button:hover {
+            opacity: 1.0; background: rgba(255, 255, 255, 0.3);
+        }
+
         /* START OVERLAY */
         #overlay {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
@@ -32,13 +45,12 @@
             filter: drop-shadow(0 0 20px rgba(255,255,255,0.5));
         }
         
-        /* BACKGROUND FLASH */
         #flash {
             position: fixed; top:0; left:0; width:100%; height:100%;
             opacity: 0; z-index: 0; pointer-events: none;
         }
 
-        /* VISUAL EFFECTS: BUBBLES */
+        /* VISUAL EFFECTS */
         .bubble {
             position: absolute; border: 5px solid white; border-radius: 50%;
             pointer-events: none; z-index: 10; animation: bubble-grow 0.6s ease-out forwards;
@@ -48,14 +60,12 @@
             100% { width: 500px; height: 500px; opacity: 0; }
         }
 
-        /* VISUAL EFFECTS: LASERS */
         .laser {
             position: absolute; height: 10px; background: white;
             pointer-events: none; z-index: 5; border-radius: 5px;
             box-shadow: 0 0 15px white;
         }
 
-        /* VISUAL EFFECTS: FIREWORKS */
         .particle {
             position: absolute; width: 15px; height: 15px; border-radius: 50%;
             pointer-events: none; z-index: 20;
@@ -65,6 +75,9 @@
     </style>
 </head>
 <body onmousedown="handleInput(event)" onkeydown="handleInput(event)">
+
+    <!-- HOME BUTTON (Links back to the main folder) -->
+    <a id="home-button" href="../index.html">🏠</a>
 
     <div id="flash"></div>
 
@@ -76,7 +89,6 @@
     <div id="dj-character">🎧</div>
     <h1>MEGA PARTY MODE</h1>
 
-    <!-- Background Techno Loop (Reliable Link) -->
     <audio id="bg-beat" loop preload="auto">
         <source src="https://www.soundhelix.com/examples/mp3/SoundHelix-Song-15.mp3" type="audio/mpeg">
     </audio>
@@ -85,7 +97,7 @@
         let audioCtx;
         let isStarted = false;
         let lastPressTime = 0;
-        const cooldown = 180; // Fast but prevents glitching
+        const cooldown = 180;
         const colors = ['#FF00FF', '#00FFFF', '#00FF00', '#FFFF00', '#FF0000', '#FFFFFF'];
 
         const dj = document.getElementById('dj-character');
@@ -94,18 +106,13 @@
         const flash = document.getElementById('flash');
 
         function startEngine() {
-            // Wakes up Web Audio API (The Synth)
             audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-            
-            // Starts the Techno MP3
             bgBeat.volume = 0.2;
             bgBeat.play();
-
             overlay.style.display = 'none';
             isStarted = true;
         }
 
-        // --- THE SYNTH SOUNDS (Zero Latency) ---
         function playSynthSound(type) {
             const osc = audioCtx.createOscillator();
             const gain = audioCtx.createGain();
@@ -135,6 +142,9 @@
         }
 
         function handleInput(event) {
+            // Prevent the home button from being "clicked" by a keyboard press
+            if (event.target.id === 'home-button') return;
+
             if (!isStarted) return;
             if (event.type === 'keydown' && event.code !== "Space" && event.code !== "Enter") return;
 
@@ -146,24 +156,19 @@
         }
 
         function triggerAction() {
-            // 1. CHOOSE A RANDOM SOUND
             const sounds = ['kick', 'laser', 'blip'];
             playSynthSound(sounds[Math.floor(Math.random() * sounds.length)]);
 
-            // 2. THE BIG ZOOM
             dj.style.transform = "scale(2.5) rotate(" + (Math.random() * 40 - 20) + "deg)";
             
-            // 3. COLOR FLASH
             const randomColor = colors[Math.floor(Math.random() * colors.length)];
             flash.style.backgroundColor = randomColor;
             flash.style.opacity = "0.7";
 
-            // 4. SPAWN VISUALS
             createBubbles(randomColor);
             createLasers(randomColor);
             createFirework(randomColor);
 
-            // RESET (Fast)
             setTimeout(() => {
                 dj.style.transform = "scale(1.0) rotate(0deg)";
                 flash.style.opacity = "0";
@@ -171,8 +176,6 @@
 
             if (navigator.vibrate) navigator.vibrate(50);
         }
-
-        // --- VISUAL GENERATORS ---
 
         function createBubbles(color) {
             const b = document.createElement('div');
