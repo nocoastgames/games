@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>BUBBLE POP ACCESSIBILITY</title>
+    <style>
+        body { 
+            background-color: #000; margin: 0; overflow: hidden; 
+            display: flex; flex-direction: column; justify-content: center; 
+            align-items: center; height: 100vh; font-family: sans-serif;
+            user-select: none; touch-action: manipulation;
+        }
+
+        /* 🏠 THE UNOBTRUSIVE HOME BUTTON */
+        #home-button {
+            position: fixed; top: 15px; left: 15px; z-index: 1000;
+            color: white; text-decoration: none; font-size: 24px;
+            background: rgba(255, 255, 255, 0.1); padding: 10px; 
+            border-radius: 10px; border: 1px solid rgba(255,255,255,0.2);
+            opacity: 0.3; transition: opacity 0.3s;
+        }
+        #home-button:hover { opacity: 1.0; background: rgba(255, 255, 255, 0.3); }
+
+        /* START OVERLAY */
+        #overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: #000; color: #00FFFF; display: flex; 
+            flex-direction: column; justify-content: center; align-items: center; 
+            z-index: 100; cursor: pointer; text-align: center;
+        }
+        #start-btn {
+            font-size: 50px; padding: 30px 60px; border: 8px solid #00FFFF;
+            background: transparent; color: #00FFFF; font-weight: bold;
+            border-radius: 20px; box-shadow: 0 0 30px #00FFFF;
+        }
+
+        /* BUBBLE STYLE */
+        .bubble {
+            position: absolute;
+            border-radius: 50%;
+            background: radial-gradient(circle at 30% 30%, rgba(255,255,255,0.4), rgba(0,255,255,0.1));
+            border: 2px solid rgba(255,255,255,0.5);
+            box-shadow: inset 0 0 20px rgba(255,255,255,0.3), 0 0 20px rgba(0,255,255,0.2);
+            pointer-events: none;
+            z-index: 10;
+            animation: wobble 2s infinite ease-in-out;
+        }
+
+        @keyframes wobble {
+            0%, 100% { transform: scale(1) translate(0,0); }
+            50% { transform: scale(1.05) translate(5px, -5px); }
+        }
+
+        /* STAR PARTICLES (When popped) */
+        .star {
+            position: absolute; width: 10px; height: 10px; background: white;
+            border-radius: 50%; pointer-events: none; z-index: 5;
+        }
+
+        h1 { color: #00FFFF; position: absolute; bottom: 20px; letter-spacing: 5px; opacity: 0.5; }
+    </style>
+</head>
+<body onmousedown="handleInput(event)" onkeydown="handleInput(event)">
+
+    <a id="home-button" href="../index.html">🏠</a>
+
+    <div id="overlay" onclick="startEngine()">
+        <div id="start-btn">START BUBBLES</div>
+        <p style="margin-top: 20px; color: white;">(Calm Mode)</p>
+    </div>
+
+    <h1>BUBBLE POP</h1>
+
+    <!-- Soft, Bubbly Ambient Sound -->
+    <audio id="bg-music" loop preload="auto">
+        <source src="https://www.soundhelix.com/examples/mp3/SoundHelix-Song-8.mp3" type="audio/mpeg">
+    </audio>
+
+    <script>
+        let audioCtx;
+        let isStarted = false;
+        let lastPressTime = 0;
+        const cooldown = 200;
+        const bubbleColors = ['#00FFFF', '#FF00FF', '#FFFF00', '#00FF00', '#FFFFFF'];
+
+        function startEngine() {
+            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            const music = document.getElementById('bg-music');
+            music.volume = 0.15;
+            music.play();
+            document.getElementById('overlay').style.display = 'none';
+            isStarted = true;
+        }
+
+        // --- SYNTH BUBBLE SOUNDS ---
+        function playPopSound() {
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            
+            const now = audioCtx.currentTime;
+            osc.frequency.setValueAtTime(100 + Math.random() * 400, now);
+            osc.frequency.exponentialRampToValueAtTime(800, now + 0.1);
+            
+            gain.gain.setValueAtTime(0.3, now);
+            gain.gain.exponentialRampToValueAtTime(0.01, now + 0.1);
+            
+            osc.start();
+            osc.stop(now + 0.1);
+        }
+
+        function handleInput(event) {
+            if (event.target.id === 'home-button') return;
+            if (!isStarted) return;
+            if (event.type === 'keydown' && event.code !== "Space" && event.code !== "Enter") return;
+
+            const now = Date.now();
+            if (now - lastPressTime < cooldown) return;
+            lastPressTime = now;
+
+            spawnBubble();
+        }
+
+        function spawnBubble() {
+            playPopSound();
+            
+            const size = 200 + Math.random() * 200;
+            const x = Math.random() * (window.innerWidth - size);
+            const y = Math.random() * (window.innerHeight - size);
+            const color = bubbleColors[Math.floor(Math.random() * bubbleColors.length)];
+
+            const b = document.createElement('div');
+            b.className = 'bubble';
+            b.style.width = size + "px";
+            b.style.height = size + "px";
+            b.style.left = x + "px";
+            b.style.top = y + "px";
+            b.style.borderColor = color;
+            document.body.appendChild(b);
+
+            // Pop it after a short delay
+            setTimeout(() => {
+                popBubble(x + size/2, y + size/2, color);
+                b.remove();
+            }, 600);
+
+            if (navigator.vibrate) navigator.vibrate(40);
+        }
+
+        function popBubble(x, y, color) {
+            // Create a "Pop" ring
+            const ring = document.createElement('div');
+            ring.style.position = "absolute";
+            ring.style.border = "4px solid " + color;
+            ring.style.borderRadius = "50%";
+            ring.style.left = x + "px";
+            ring.style.top = y + "px";
+            ring.style.transform = "translate(-50%, -50%)";
+            ring.style.pointerEvents = "none";
+            document.body.appendChild(ring);
+
+            ring.animate([
+                { width: '0px', height: '0px', opacity: 1 },
+                { width: '500px', height: '500px', opacity: 0 }
+            ], { duration: 400, easing: 'ease-out' });
+
+            // Create stars
+            for (let i = 0; i < 15; i++) {
+                const s = document.createElement('div');
+                s.className = 'star';
+                s.style.backgroundColor = color;
+                s.style.left = x + "px";
+                s.style.top = y + "px";
+                
+                const angle = Math.random() * Math.PI * 2;
+                const dist = 50 + Math.random() * 200;
+                
+                s.animate([
+                    { transform: 'translate(-50%, -50%) scale(1)', opacity: 1 },
+                    { transform: `translate(${Math.cos(angle)*dist}px, ${Math.sin(angle)*dist}px) scale(0)`, opacity: 0 }
+                ], { duration: 800 + Math.random()*400, easing: 'ease-out' });
+                
+                document.body.appendChild(s);
+                setTimeout(() => s.remove(), 1200);
+            }
+            
+            setTimeout(() => ring.remove(), 400);
+        }
+    </script>
+</body>
+</html>
