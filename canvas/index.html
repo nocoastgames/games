@@ -3,12 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>NEON CANVAS - PRO</title>
+    <title>NEON CANVAS - GLOW & DRIP</title>
     <style>
         body { 
             background-color: #000; margin: 0; overflow: hidden; 
             display: flex; flex-direction: column; justify-content: center; 
-            align-items: center; height: 100vh; font-family: sans-serif;
+            align-items: center; height: 100vh; font-family: 'Arial Black', sans-serif;
             user-select: none; touch-action: manipulation;
         }
 
@@ -37,39 +37,29 @@
         }
         .btn-start:hover { background: #FFFFFF; color: #000; }
 
-        /* WIN OVERLAY */
-        #win-overlay {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.7); display: none; 
-            flex-direction: column; justify-content: center; align-items: center; 
-            z-index: 400; text-align: center; pointer-events: none;
-        }
-        .bravo-text {
-            color: #00FF00; font-size: clamp(50px, 10vw, 100px); font-weight: 900;
-            text-shadow: 0 0 20px #00FF00; margin: 0;
-        }
-
         canvas { display: block; position: absolute; top: 0; left: 0; }
         #flash { position: fixed; top:0; left:0; width:100%; height:100%; opacity: 0; z-index: 150; pointer-events: none; }
         #hud { position: absolute; top: 20px; right: 20px; color: #FFF; font-size: 24px; font-weight: bold; opacity: 0.5; z-index: 50; }
+        
+        /* GALLERY FRAME */
+        #frame {
+            position: fixed; inset: 0; border: 0px solid gold; z-index: 300;
+            pointer-events: none; transition: border-width 0.5s;
+        }
     </style>
 </head>
 <body onmousedown="handleInput(event)" onkeydown="handleInput(event)">
 
     <a id="home-button" href="../index.html">🏠</a>
     <div id="flash"></div>
+    <div id="frame"></div>
 
     <div id="overlay">
         <button class="btn-start" onclick="startEngine(event)">START PAINTING</button>
-        <p style="color: #666; margin-top: 20px; letter-spacing: 1px;">PHASE 1: CREATIVE IMPACT</p>
+        <p style="color: #666; margin-top: 20px; letter-spacing: 1px;">PHASE 1: CREATIVE AGENCY</p>
     </div>
 
-    <div id="win-overlay">
-        <p class="bravo-text">BRAVO!</p>
-        <p style="color: white; font-size: 32px; font-weight: bold;">A MASTERPIECE!</p>
-    </div>
-
-    <div id="hud">SPLATS: <span id="hit-count">0</span>/10</div>
+    <div id="hud">ARTWORK: <span id="hit-count">0</span>%</div>
     <canvas id="mainCanvas"></canvas>
     <canvas id="fxCanvas"></canvas>
 
@@ -84,18 +74,18 @@
         const fCtx = fCanvas.getContext('2d');
         const flash = document.getElementById('flash');
         const hitDisplay = document.getElementById('hit-count');
-        const winOverlay = document.getElementById('win-overlay');
         const bgMusic = document.getElementById('bg-music');
+        const frame = document.getElementById('frame');
         
-        // --- PRO HUB SETTINGS ---
         const lowSensoryMode = localStorage.getItem('lowSensory') === 'true';
         const isMuted = localStorage.getItem('muteMusic') === 'true';
 
-        let audioCtx, isStarted = false, isCleaning = false, gameState = "play";
+        let audioCtx, isStarted = false, gameState = "play";
         let lastPressTime = 0, cooldown = 400;
-        let splatCount = 0, squeegeeX = -300;
-
+        let splatCount = 0, squeegeeX = -400;
+        
         const neonColors = ['#00FFFF', '#FF00FF', '#00FF00', '#FFFF00', '#FF4500', '#FF0000', '#FFFFFF'];
+        let activeDrips = [];
 
         function startEngine(e) {
             if(e) e.stopPropagation();
@@ -103,7 +93,7 @@
                 audioCtx = new (window.AudioContext || window.webkitAudioContext)();
                 if (!isMuted) {
                     bgMusic.volume = 0.15;
-                    bgMusic.play().catch(err => console.log("Audio block"));
+                    bgMusic.play().catch(err => console.log("Audio blocked"));
                 }
             } catch (err) {}
 
@@ -122,9 +112,10 @@
             if (now - lastPressTime < cooldown) return;
             lastPressTime = now;
 
-            // --- DATA COLLECTION ---
             splatCount++;
-            hitDisplay.innerText = splatCount;
+            hitDisplay.innerText = splatCount * 10;
+            
+            // DATA LOG
             let totalS = parseInt(localStorage.getItem('statSuccess') || 0);
             localStorage.setItem('statSuccess', totalS + 1);
 
@@ -132,49 +123,55 @@
         }
 
         function triggerSplat() {
-            const centerX = Math.random() * mCanvas.width;
-            const centerY = Math.random() * mCanvas.height;
+            const x = Math.random() * mCanvas.width;
+            const y = Math.random() * mCanvas.height;
             const color = neonColors[Math.floor(Math.random() * neonColors.length)];
             
-            // Draw Paint
-            createBlob(centerX, centerY, color, 160 + Math.random() * 140);
-            for(let i=0; i<4; i++) {
-                createBlob(centerX + (Math.random()-0.5)*300, centerY + (Math.random()-0.5)*300, color, 40 + Math.random()*60);
+            // Create Splat
+            createOrganicBlob(mCtx, x, y, color, 150 + Math.random()*150);
+            
+            // Create Drips
+            for(let i=0; i<3; i++) {
+                activeDrips.push({
+                    x: x + (Math.random()*100 - 50),
+                    y: y,
+                    speed: 0.5 + Math.random()*1.5,
+                    size: 10 + Math.random()*15,
+                    color: color,
+                    life: 100 + Math.random()*200
+                });
             }
 
             playSplatSound();
-
             if (!lowSensoryMode) {
-                flash.style.backgroundColor = "rgba(255,255,255,0.2)";
+                flash.style.backgroundColor = "rgba(255,255,255,0.1)";
                 flash.style.opacity = 1;
                 setTimeout(() => flash.style.opacity = 0, 50);
             }
 
-            if (splatCount >= 10) {
-                gameState = "win";
-                setTimeout(triggerVictory, 800);
-            }
+            if (splatCount >= 10) triggerGalleryMode();
             if (navigator.vibrate) navigator.vibrate(60);
         }
 
-        function createBlob(x, y, color, size) {
-            mCtx.save();
-            mCtx.translate(x, y);
-            mCtx.fillStyle = color;
-            if (!lowSensoryMode) { mCtx.shadowBlur = 30; mCtx.shadowColor = color; }
+        function createOrganicBlob(ctx, x, y, color, size) {
+            ctx.save();
+            ctx.translate(x, y);
+            ctx.fillStyle = color;
+            ctx.globalCompositeOperation = "lighter"; // Makes overlaps glow white
+            if (!lowSensoryMode) { ctx.shadowBlur = 40; ctx.shadowColor = color; }
 
-            mCtx.beginPath();
-            const points = 10;
+            ctx.beginPath();
+            const points = 12;
             for (let i = 0; i <= points; i++) {
                 const angle = (i / points) * Math.PI * 2;
-                const variance = 0.6 + Math.random() * 0.7;
+                const variance = 0.5 + Math.random() * 0.8;
                 const tx = Math.cos(angle) * (size * variance);
                 const ty = Math.sin(angle) * (size * variance);
-                if (i === 0) mCtx.moveTo(tx, ty);
-                else mCtx.quadraticCurveTo(0, 0, tx, ty);
+                if (i === 0) ctx.moveTo(tx, ty);
+                else ctx.quadraticCurveTo(0, 0, tx, ty);
             }
-            mCtx.fill();
-            mCtx.restore();
+            ctx.fill();
+            ctx.restore();
         }
 
         function playSplatSound() {
@@ -182,36 +179,32 @@
             const osc = audioCtx.createOscillator();
             const gain = audioCtx.createGain();
             osc.connect(gain); gain.connect(audioCtx.destination);
-            osc.type = 'triangle';
-            osc.frequency.setValueAtTime(180, audioCtx.currentTime);
-            osc.frequency.exponentialRampToValueAtTime(40, audioCtx.currentTime + 0.2);
+            osc.frequency.setValueAtTime(120, audioCtx.currentTime);
+            osc.frequency.exponentialRampToValueAtTime(40, audioCtx.currentTime + 0.3);
             gain.gain.setValueAtTime(0.4, audioCtx.currentTime);
-            gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.2);
-            osc.start(); osc.stop(audioCtx.currentTime + 0.2);
+            gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.3);
+            osc.start(); osc.stop(audioCtx.currentTime + 0.3);
         }
 
-        function triggerVictory() {
-            winOverlay.style.display = 'flex';
-            if (!isMuted) {
-                const notes = [261, 329, 392, 523];
-                notes.forEach((f, i) => {
-                    const o = audioCtx.createOscillator(); const g = audioCtx.createGain();
-                    o.connect(g); g.connect(audioCtx.destination);
-                    o.frequency.setValueAtTime(f, audioCtx.currentTime + i*0.12);
-                    g.gain.setValueAtTime(0.3, audioCtx.currentTime + i*0.12);
-                    g.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + i*0.12 + 0.4);
-                    o.start(audioCtx.currentTime + i*0.12); o.stop(audioCtx.currentTime + i*0.12 + 0.4);
-                });
-            }
+        function triggerGalleryMode() {
+            gameState = "win";
+            frame.style.borderWidth = "40px";
+            speak("Bravo! It is a masterpiece!");
             setTimeout(() => {
-                winOverlay.style.display = 'none';
+                frame.style.borderWidth = "0px";
                 startCleanup();
-            }, 3500);
+            }, 5000);
+        }
+
+        function speak(text) {
+            if (isMuted) return;
+            const msg = new SpeechSynthesisUtterance(text);
+            window.speechSynthesis.speak(msg);
         }
 
         function startCleanup() {
-            isCleaning = true;
             squeegeeX = -400;
+            gameState = "cleaning";
             if(!isMuted) playCleanupSound();
         }
 
@@ -221,25 +214,52 @@
             for (let i = 0; i < data.length; i++) data[i] = Math.random() * 2 - 1;
             const noise = audioCtx.createBufferSource();
             noise.buffer = buffer;
-            const filter = audioCtx.createBiquadFilter(); filter.type = 'lowpass'; filter.frequency.value = 600;
+            const filter = audioCtx.createBiquadFilter(); filter.type = 'lowpass'; filter.frequency.value = 800;
             const gain = audioCtx.createGain(); gain.gain.setValueAtTime(0.2, audioCtx.currentTime);
-            gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 1.8);
+            gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 2);
             noise.connect(filter); filter.connect(gain); gain.connect(audioCtx.destination);
             noise.start();
         }
 
         function gameLoop() {
             fCtx.clearRect(0,0, fCanvas.width, fCanvas.height);
-            if (isCleaning) {
-                squeegeeX += 25;
+
+            // 1. Process Gravity Drips
+            activeDrips.forEach(d => {
+                if (d.life > 0) {
+                    d.y += d.speed;
+                    d.life--;
+                    mCtx.fillStyle = d.color;
+                    mCtx.beginPath();
+                    mCtx.arc(d.x, d.y, d.size * (d.life/200), 0, Math.PI*2);
+                    mCtx.fill();
+                }
+            });
+
+            // 2. Handle Cleanup
+            if (gameState === "cleaning") {
+                squeegeeX += 20;
+                
+                // Draw Squeegee Bot
                 fCtx.fillStyle = "#333"; fCtx.fillRect(squeegeeX, 0, 150, fCanvas.height);
-                fCtx.fillStyle = "#FFF"; fCtx.fillRect(squeegeeX + 140, 0, 10, fCanvas.height);
-                mCtx.fillStyle = "black"; mCtx.fillRect(squeegeeX - 50, 0, 100, mCanvas.height);
+                fCtx.fillStyle = "white"; fCtx.fillRect(squeegeeX + 140, 0, 10, fCanvas.height);
+                
+                // Bot Eyes
+                fCtx.fillStyle = "white";
+                fCtx.beginPath(); fCtx.arc(squeegeeX + 75, fCanvas.height/2 - 40, 20, 0, Math.PI*2); fCtx.fill();
+                fCtx.beginPath(); fCtx.arc(squeegeeX + 75, fCanvas.height/2 + 40, 20, 0, Math.PI*2); fCtx.fill();
+                fCtx.fillStyle = "black";
+                fCtx.beginPath(); fCtx.arc(squeegeeX + 82, fCanvas.height/2 - 40, 8, 0, Math.PI*2); fCtx.fill();
+                fCtx.beginPath(); fCtx.arc(squeegeeX + 82, fCanvas.height/2 + 40, 8, 0, Math.PI*2); fCtx.fill();
+
+                mCtx.fillStyle = "black"; mCtx.fillRect(squeegeeX - 50, 0, 150, mCanvas.height);
+
                 if (squeegeeX > fCanvas.width + 400) {
-                    isCleaning = false; splatCount = 0;
-                    hitDisplay.innerText = "0"; gameState = "play";
+                    splatCount = 0; hitDisplay.innerText = "0";
+                    activeDrips = []; gameState = "play";
                 }
             }
+
             requestAnimationFrame(gameLoop);
         }
 
