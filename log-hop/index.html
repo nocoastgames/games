@@ -20,7 +20,6 @@
         }
         #home-button:hover { opacity: 1.0; background: rgba(255, 255, 255, 0.3); }
 
-        /* SETTINGS MENU */
         #overlay {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
             background: #000; color: #FFF; display: flex; 
@@ -62,7 +61,6 @@
     <a id="home-button" href="../index.html">🏠</a>
     <div id="flash"></div>
 
-    <!-- SETTINGS MENU -->
     <div id="overlay">
         <div class="settings-box">
             <h2 style="color: #FF8C00; margin-top:0;">FROG SETTINGS</h2>
@@ -81,9 +79,9 @@
 
     <canvas id="gameCanvas"></canvas>
 
-    <!-- BACKGROUND MUSIC -->
+    <!-- NEW UNIQUE BACKGROUND MUSIC (Whimsical & Fun) -->
     <audio id="bg-music" loop preload="auto">
-        <source src="https://www.soundhelix.com/examples/mp3/SoundHelix-Song-8.mp3" type="audio/mpeg">
+        <source src="https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3" type="audio/mpeg">
     </audio>
 
     <script>
@@ -104,7 +102,6 @@
 
         let gameMode = 'free', targetHue = 120, distractorHues = [300, 180];
 
-        // UI Setup
         function setMode(m) {
             gameMode = m;
             document.getElementById('mode-free').className = (m === 'free' ? 'toggle-btn active' : 'toggle-btn');
@@ -132,7 +129,6 @@
             distractorGrid.appendChild(dDiv);
         });
 
-        // Game State
         let riverLanes = 3, steps = [], laneData = [], gameState = "play";
         let bankWidth = 180, sandbarWidth = 80, laneWidth;
         let frog = { stepIdx: 0, x: 0, y: 0, targetX: 0, isJumping: false, jumpT: 0, isBouncing: false };
@@ -140,12 +136,9 @@
 
         function startEngine() {
             audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-            bgMusic.volume = 0.15; bgMusic.play();
+            bgMusic.volume = 0.2; bgMusic.play();
             resize(); resetGame();
-            
-            // Create sparkles for the water
             for(let i=0; i<80; i++) sparkles.push({ x: Math.random()*canvas.width, y: Math.random()*canvas.height, s: Math.random()*3+1, alpha: Math.random(), v: Math.random()*0.02+0.01 });
-
             document.getElementById('overlay').style.display = 'none';
             isStarted = true;
             requestAnimationFrame(gameLoop);
@@ -241,7 +234,8 @@
                 gain.gain.setValueAtTime(vol, now); gain.gain.exponentialRampToValueAtTime(0.01, now+0.2);
                 osc.start(); osc.stop(now+0.2);
             } else if (type === 'win') {
-                [261, 329, 392, 523].forEach((f, i) => {
+                const notes = [261, 329, 392, 523];
+                notes.forEach((f, i) => {
                     const o = audioCtx.createOscillator(); const g = audioCtx.createGain();
                     o.connect(g); g.connect(audioCtx.destination);
                     o.frequency.setValueAtTime(f, now + i*0.15); g.gain.setValueAtTime(vol, now + i*0.15);
@@ -252,10 +246,7 @@
         }
 
         function gameLoop() {
-            // Background Water
             ctx.fillStyle = '#050525'; ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-            // Water Sparkles
             ctx.fillStyle = "white";
             sparkles.forEach(s => {
                 s.alpha += s.v; if (s.alpha > 1 || s.alpha < 0) s.v *= -1;
@@ -263,7 +254,6 @@
             });
             ctx.globalAlpha = 1;
 
-            // Terrain
             steps.forEach(step => {
                 if (step.type === 'bank') { ctx.fillStyle = '#222'; ctx.fillRect(step.x - bankWidth/2, 0, bankWidth, canvas.height); }
                 else if (step.type === 'sandbar') {
@@ -272,7 +262,6 @@
                 }
             });
 
-            // Logs
             laneData.forEach(lane => {
                 let laneX = steps.find(s => s.laneIdx === lane.laneIdx).x;
                 lane.logs.forEach(log => {
@@ -284,7 +273,6 @@
                 });
             });
 
-            // Frog Stick
             if (!frog.isJumping && gameState === "play") {
                 let currentStep = steps[frog.stepIdx];
                 if (currentStep.type === 'lane') {
@@ -294,7 +282,6 @@
                 }
             }
 
-            // Frog Jump & Drawing
             if (frog.isJumping) {
                 frog.jumpT += 0.05; let arc = Math.sin(frog.jumpT * Math.PI) * 150;
                 frog.x = frog.oldX + (frog.targetX - frog.oldX) * frog.jumpT;
@@ -302,19 +289,13 @@
                 if (frog.jumpT >= 1) { frog.x = frog.targetX; frog.isJumping = false; if (!frog.isBouncing) checkLanding(); }
             } else { drawFrog(frog.x, frog.y); }
 
-            // --- WIN TEXT DRAWN ON CANVAS (Layered under particles) ---
             if (gameState === "win") {
-                ctx.fillStyle = "white";
-                ctx.textAlign = "center";
-                ctx.shadowBlur = 20; ctx.shadowColor = "rgba(0,255,0,0.5)";
-                ctx.font = "bold 80px sans-serif";
-                ctx.fillText("GREAT JOB!", canvas.width/2, canvas.height/2);
-                ctx.font = "bold 30px sans-serif";
-                ctx.fillText("YOU CROSSED THE RIVER!", canvas.width/2, canvas.height/2 + 60);
+                ctx.fillStyle = "white"; ctx.textAlign = "center"; ctx.shadowBlur = 20; ctx.shadowColor = "rgba(0,255,0,0.5)";
+                ctx.font = "bold 80px sans-serif"; ctx.fillText("GREAT JOB!", canvas.width/2, canvas.height/2);
+                ctx.font = "bold 30px sans-serif"; ctx.fillText("YOU CROSSED THE RIVER!", canvas.width/2, canvas.height/2 + 60);
                 ctx.shadowBlur = 0;
             }
 
-            // Victory Particles (Drawn last to be on top)
             particles.forEach(p => {
                 ctx.fillStyle = p.color; ctx.globalAlpha = p.life;
                 ctx.beginPath(); ctx.arc(p.x, p.y, p.s, 0, Math.PI*2); ctx.fill();
@@ -322,7 +303,6 @@
             });
             particles = particles.filter(p => p.life > 0);
             ctx.globalAlpha = 1;
-
             requestAnimationFrame(gameLoop);
         }
 
@@ -350,7 +330,6 @@
             ctx.beginPath(); ctx.arc(0, 5, 15, 0.1 * Math.PI, 0.9 * Math.PI); ctx.stroke();
             ctx.restore();
         }
-
         window.onresize = resize;
     </script>
 </body>
