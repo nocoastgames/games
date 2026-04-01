@@ -14,9 +14,17 @@
         h1 { color: #fff; font-size: clamp(28px, 5vw, 48px); text-align: center; margin-bottom: 5px; text-shadow: 0 0 15px rgba(255,255,255,0.2); }
         .subtitle { color: #888; margin-bottom: 30px; font-size: 18px; text-align: center; }
 
-        /* SENSORY TOGGLE */
-        .sensory-controls { background: #111; padding: 15px 25px; border-radius: 25px; margin-bottom: 40px; border: 2px solid #444; display: flex; align-items: center; gap: 20px; box-shadow: 0 5px 15px rgba(0,0,0,0.5); }
-        .toggle-btn { padding: 12px 24px; border-radius: 15px; border: none; cursor: pointer; font-weight: bold; font-size: 16px; transition: 0.3s; }
+        /* SETTINGS CONTROLS */
+        .settings-bar { 
+            background: #111; padding: 20px 30px; border-radius: 30px; 
+            margin-bottom: 40px; border: 2px solid #444; 
+            display: flex; flex-wrap: wrap; justify-content: center; gap: 30px; 
+            box-shadow: 0 5px 15px rgba(0,0,0,0.5); 
+        }
+        .control-group { display: flex; align-items: center; gap: 15px; }
+        .control-label { font-weight: bold; color: #bbb; text-transform: uppercase; font-size: 13px; letter-spacing: 1px; }
+        
+        .toggle-btn { padding: 12px 24px; border-radius: 15px; border: none; cursor: pointer; font-weight: bold; font-size: 14px; transition: 0.3s; min-width: 140px; }
         .on { background: #ff4444; color: white; }
         .off { background: #44ff44; color: black; }
 
@@ -51,16 +59,23 @@
     <h1>Interaction Hub</h1>
     <p class="subtitle">Developmental Roadmap for One-Button Users</p>
 
-    <div class="sensory-controls">
-        <span style="font-weight:bold; color:#bbb;">Visual Stimulation:</span>
-        <button id="sensoryToggle" class="toggle-btn off" onclick="toggleSensory()">HIGH (Standard)</button>
+    <!-- SETTINGS SECTION -->
+    <div class="settings-bar">
+        <div class="control-group">
+            <span class="control-label">Visuals:</span>
+            <button id="sensoryToggle" class="toggle-btn off" onclick="toggleSensory()">HIGH (Standard)</button>
+        </div>
+        <div class="control-group">
+            <span class="control-label">Music:</span>
+            <button id="musicToggle" class="toggle-btn off" onclick="toggleMusic()">MUSIC ON</button>
+        </div>
     </div>
 
     <!-- PHASE 1 -->
     <div class="phase-section" style="border-color: var(--p1);">
         <div class="phase-header">
             <div class="phase-title" style="color: var(--p1);">Phase 1: Sensory Agency</div>
-            <div class="phase-desc">Goal: Understand "I press, and something happens." Massive immediate feedback.</div>
+            <div class="phase-desc">Understand "I press, and something happens." Massive immediate feedback.</div>
         </div>
         <div class="game-grid">
             <a href="burst/index.html" class="game-card ph1"><span class="game-icon">💥</span><span class="game-name">Neon Burst</span></a>
@@ -74,9 +89,10 @@
     <div class="phase-section" style="border-color: var(--p2);">
         <div class="phase-header">
             <div class="phase-title" style="color: var(--p2);">Phase 2: Sustained Action</div>
-            <div class="phase-desc">Goal: Repeated pressing results in continuous movement or progress.</div>
+            <div class="phase-desc">Repeated pressing results in continuous movement or high-speed travel.</div>
         </div>
         <div class="game-grid">
+            <a href="tunnel/index.html" class="game-card ph2"><span class="game-icon">🌌</span><span class="game-name">Star Tunnel</span></a>
             <a href="snake/index.html" class="game-card ph2"><span class="game-icon">🐍</span><span class="game-name">Mega Snake</span></a>
             <a href="racer/index.html" class="game-card ph2"><span class="game-icon">🏎️</span><span class="game-name">Neon Racer</span></a>
         </div>
@@ -86,7 +102,7 @@
     <div class="phase-section" style="border-color: var(--p3);">
         <div class="phase-header">
             <div class="phase-title" style="color: var(--p3);">Phase 3: Persistence</div>
-            <div class="phase-desc">Goal: Follow a multi-step sequence to reach a big finale.</div>
+            <div class="phase-desc">Following a multi-step sequence to reach a big finale.</div>
         </div>
         <div class="game-grid">
             <a href="rocket/index.html" class="game-card ph3"><span class="game-icon">🚀</span><span class="game-name">Mega Rocket</span></a>
@@ -97,8 +113,8 @@
     <!-- PHASE 4 -->
     <div class="phase-section" style="border-color: var(--p4);">
         <div class="phase-header">
-            <div class="phase-title" style="color: var(--p4);">Phase 4: Timing (Action on Cue)</div>
-            <div class="phase-desc">Goal: Waiting for the right moment. Teaches inhibitory control.</div>
+            <div class="phase-title" style="color: var(--p4);">Phase 4: Timing</div>
+            <div class="phase-desc">Waiting for the right moment. Teaches inhibitory control.</div>
         </div>
         <div class="game-grid">
             <a href="log-hop/index.html" class="game-card ph4"><span class="game-icon">🪵</span><span class="game-name">Mega Log Hop</span></a>
@@ -109,7 +125,7 @@
     <div class="phase-section" style="border-color: var(--p5);">
         <div class="phase-header">
             <div class="phase-title" style="color: var(--p5);">Phase 5: Visual Matching</div>
-            <div class="phase-desc">Goal: Choice making. Scanned selection of matching icons.</div>
+            <div class="phase-desc">Choice making. Scanned selection of matching icons.</div>
         </div>
         <div class="game-grid">
             <a href="match/index.html" class="game-card ph5"><span class="game-icon">🎯</span><span class="game-name">Target Match</span></a>
@@ -119,32 +135,22 @@
     <!-- PHASE 6 -->
     <div class="phase-section" style="border-color: var(--p6);">
         <div class="phase-header">
-            <div class="phase-title" style="color: var(--p6);">Phase 6: Logic & Categorization</div>
-            <div class="phase-desc">Goal: Logical grouping. Sort by size, color temp, or category.</div>
+            <div class="phase-title" style="color: var(--p6);">Phase 6: Categorization</div>
+            <div class="phase-desc">Logical grouping. Sort by size, color temp, or category.</div>
         </div>
         <div class="game-grid">
             <a href="sort/index.html" class="game-card ph6"><span class="game-icon">📦</span><span class="game-name">Logic Sort</span></a>
         </div>
     </div>
 
-    <!-- PHASE 7 -->
-    <div class="phase-section" style="border-color: var(--p7);">
-        <div class="phase-header">
-            <div class="phase-title" style="color: var(--p7);">Phase 7: Pre-Communication</div>
-            <div class="phase-desc">Goal: Using scanning to request items or express needs.</div>
-        </div>
-        <div class="game-grid">
-            <div class="game-card" style="opacity: 0.3; border-color: var(--p7);"><span class="game-icon">💬</span><span class="game-name">Coming Soon</span></div>
-        </div>
-    </div>
-
     <footer>
         <a href="https://ko-fi.com/nocoast" target="_blank" class="kofi-button">☕ Support this project on Ko-fi</a>
-        <p style="color:#444; font-size: 12px; margin-top:20px;">Released under the MIT License.</p>
+        <p style="color:#444; font-size: 12px; margin-top:20px;">MIT License - Open Source.</p>
     </footer>
 
     <script>
-        function updateButton() {
+        // --- SENSORY LOGIC ---
+        function updateSensoryButton() {
             const isLow = localStorage.getItem('lowSensory') === 'true';
             const btn = document.getElementById('sensoryToggle');
             if (isLow) { btn.innerText = "LOW (Safe Mode)"; btn.className = "toggle-btn on"; }
@@ -153,9 +159,25 @@
         function toggleSensory() {
             const isLow = localStorage.getItem('lowSensory') === 'true';
             localStorage.setItem('lowSensory', !isLow);
-            updateButton();
+            updateSensoryButton();
         }
-        updateButton();
+
+        // --- MUSIC LOGIC ---
+        function updateMusicButton() {
+            const isMuted = localStorage.getItem('muteMusic') === 'true';
+            const btn = document.getElementById('musicToggle');
+            if (isMuted) { btn.innerText = "MUSIC OFF"; btn.className = "toggle-btn on"; }
+            else { btn.innerText = "MUSIC ON"; btn.className = "toggle-btn off"; }
+        }
+        function toggleMusic() {
+            const isMuted = localStorage.getItem('muteMusic') === 'true';
+            localStorage.setItem('muteMusic', !isMuted);
+            updateMusicButton();
+        }
+
+        // Initialize
+        updateSensoryButton();
+        updateMusicButton();
     </script>
 </body>
 </html>
