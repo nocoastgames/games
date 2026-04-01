@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>MEGA LOG HOP - COLOR CONTRAST</title>
+    <title>MEGA LOG HOP - DEEP WATER</title>
     <style>
         body { 
             background-color: #000; margin: 0; overflow: hidden; 
@@ -16,8 +16,7 @@
             position: fixed; top: 15px; left: 15px; z-index: 1000;
             color: white; text-decoration: none; font-size: 24px;
             background: rgba(255, 255, 255, 0.1); padding: 10px; 
-            border-radius: 10px; border: 1px solid rgba(255,255,255,0.2);
-            opacity: 0.3; transition: opacity 0.3s;
+            border-radius: 10px; opacity: 0.3; transition: opacity 0.3s;
         }
         #home-button:hover { opacity: 1.0; background: rgba(255, 255, 255, 0.3); }
 
@@ -45,7 +44,7 @@
 
     <div id="overlay" onclick="startEngine()">
         <div id="start-btn">START RIVER HOP</div>
-        <p style="margin-top: 20px; color: white; font-size: 20px;">(Jump across the logs!)</p>
+        <p style="margin-top: 20px; color: white; font-size: 20px;">(Deep Water & Sparkles Mode)</p>
     </div>
 
     <canvas id="gameCanvas"></canvas>
@@ -56,25 +55,36 @@
         const ctx = canvas.getContext('2d');
         const flash = document.getElementById('flash');
         
+        // --- SENSORY & CONFIG ---
+        const lowSensoryMode = localStorage.getItem('lowSensory') === 'true';
         let audioCtx, isStarted = false;
-        let lastPressTime = 0;
-        const cooldown = 300;
+        let lastPressTime = 0, cooldown = 300;
 
         let riverLanes = 3;
         let steps = []; 
         let frog = { stepIdx: 0, x: 0, y: 0, targetX: 0, isJumping: false, jumpT: 0 };
         let laneData = []; 
         let gameState = "play";
-        let bankWidth = 180;
-        let sandbarWidth = 80;
-        let laneWidth;
+        let bankWidth = 180, sandbarWidth = 80, laneWidth;
 
-        let particles = [], lasers = [];
+        let particles = [], lasers = [], sparkles = [];
 
         function startEngine() {
             audioCtx = new (window.AudioContext || window.webkitAudioContext)();
             resize();
             resetGame();
+            
+            // Create persistent sparkles for the water
+            for(let i=0; i<60; i++) {
+                sparkles.push({
+                    x: Math.random() * canvas.width,
+                    y: Math.random() * canvas.height,
+                    s: Math.random() * 3 + 1,
+                    alpha: Math.random(),
+                    v: Math.random() * 0.02 + 0.01
+                });
+            }
+
             document.getElementById('overlay').style.display = 'none';
             isStarted = true;
             requestAnimationFrame(gameLoop);
@@ -84,12 +94,10 @@
             canvas.width = window.innerWidth;
             canvas.height = window.innerHeight;
             frog.y = canvas.height / 2;
-
             steps = [];
             steps.push({ type: 'bank', x: bankWidth/2 }); 
             let remainingWidth = canvas.width - (bankWidth * 2);
             laneWidth = (remainingWidth - (sandbarWidth * (riverLanes-1))) / riverLanes;
-
             let currentX = bankWidth;
             for(let i=0; i<riverLanes; i++) {
                 steps.push({ type: 'lane', x: currentX + laneWidth/2, laneIdx: i });
@@ -109,12 +117,8 @@
             frog.y = canvas.height / 2;
             frog.isJumping = false;
             laneData = [];
-
             const logH = canvas.height * 0.55; 
             const gapH = 120; 
-
-            // --- NO GREEN LOGS LIST ---
-            // These hues avoid the 80-160 degree range (Green)
             const safeHues = [0, 30, 200, 280, 320]; 
 
             for(let i=0; i<riverLanes; i++) {
@@ -126,25 +130,16 @@
                     logsInLane.push({ y: currentY, h: logH });
                     currentY += logH + gapH;
                 }
-
                 laneData.push({
-                    laneIdx: i,
-                    speed: speed,
-                    dir: dir,
-                    logs: logsInLane,
-                    logH: logH,
-                    gapH: gapH,
-                    // Pick a hue that is NOT green
-                    color: `hsl(${safeHues[i % safeHues.length]}, 100%, 50%)`
+                    laneIdx: i, speed: speed, dir: dir, logs: logsInLane,
+                    logH: logH, gapH: gapH, color: `hsl(${safeHues[i % safeHues.length]}, 100%, 50%)`
                 });
             }
         }
 
         function handleInput(event) {
-            if (event.target.id === 'home-button') return;
-            if (!isStarted || gameState !== "play" || frog.isJumping) return;
+            if (event.target.id === 'home-button' || !isStarted || gameState !== "play" || frog.isJumping) return;
             if (event.type === 'keydown' && event.code !== "Space" && event.code !== "Enter") return;
-
             const now = Date.now();
             if (now - lastPressTime < cooldown) return;
             lastPressTime = now;
@@ -167,35 +162,42 @@
             osc.connect(gain); gain.connect(audioCtx.destination);
             const now = audioCtx.currentTime;
             if(type === 'jump') {
-                osc.frequency.setValueAtTime(300, now);
-                osc.frequency.exponentialRampToValueAtTime(600, now + 0.1);
-                gain.gain.setValueAtTime(vol, now);
-                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.1);
+                osc.frequency.setValueAtTime(300, now); osc.frequency.exponentialRampToValueAtTime(600, now + 0.1);
+                gain.gain.setValueAtTime(vol, now); gain.gain.exponentialRampToValueAtTime(0.01, now + 0.1);
                 osc.start(); osc.stop(now + 0.1);
             } else if (type === 'splash') {
                 osc.type = 'sawtooth'; osc.frequency.setValueAtTime(80, now);
-                gain.gain.setValueAtTime(vol, now);
-                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.4);
+                gain.gain.setValueAtTime(vol, now); gain.gain.exponentialRampToValueAtTime(0.01, now + 0.4);
                 osc.start(); osc.stop(now + 0.4);
             } else if (type === 'win') {
                 osc.type = 'square'; osc.frequency.setValueAtTime(400, now);
                 osc.frequency.exponentialRampToValueAtTime(1200, now + 0.6);
-                gain.gain.setValueAtTime(vol, now);
-                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.6);
+                gain.gain.setValueAtTime(vol, now); gain.gain.exponentialRampToValueAtTime(0.01, now + 0.6);
                 osc.start(); osc.stop(now + 0.6);
             }
         }
 
         function gameLoop() {
-            ctx.fillStyle = '#050515';
+            // --- DRAW DARK BLUE WATER ---
+            ctx.fillStyle = '#050525';
             ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // --- DRAW SPARKLES ---
+            ctx.fillStyle = "white";
+            sparkles.forEach(s => {
+                s.alpha += s.v;
+                if (s.alpha > 1 || s.alpha < 0) s.v *= -1;
+                ctx.globalAlpha = s.alpha;
+                ctx.beginPath(); ctx.arc(s.x, s.y, s.s, 0, Math.PI*2); ctx.fill();
+            });
+            ctx.globalAlpha = 1;
 
             steps.forEach(step => {
                 if (step.type === 'bank') {
-                    ctx.fillStyle = '#333';
+                    ctx.fillStyle = '#222';
                     ctx.fillRect(step.x - bankWidth/2, 0, bankWidth, canvas.height);
                 } else if (step.type === 'sandbar') {
-                    ctx.fillStyle = 'rgba(255, 140, 0, 0.2)';
+                    ctx.fillStyle = 'rgba(255, 140, 0, 0.15)';
                     ctx.fillRect(step.x - sandbarWidth/2, 0, sandbarWidth, canvas.height);
                     ctx.strokeStyle = '#FF8C00'; ctx.lineWidth = 2;
                     ctx.strokeRect(step.x - sandbarWidth/2, 0, sandbarWidth, canvas.height);
@@ -210,11 +212,8 @@
                     const totalLoop = lane.logH + lane.gapH;
                     if (lane.dir === 1 && log.y > canvas.height + 100) log.y -= (lane.logs.length * totalLoop);
                     else if (lane.dir === -1 && log.y < -lane.logH - 100) log.y += (lane.logs.length * totalLoop);
-
                     ctx.fillStyle = lane.color;
-                    ctx.beginPath();
-                    ctx.roundRect(laneX - logW/2, log.y, logW, lane.logH, 25);
-                    ctx.fill();
+                    ctx.beginPath(); ctx.roundRect(laneX - logW/2, log.y, logW, lane.logH, 25); ctx.fill();
                     ctx.fillStyle = 'rgba(255,255,255,0.15)';
                     ctx.fillRect(laneX - logW/2, log.y + 20, logW, 20);
                 });
@@ -226,8 +225,7 @@
                     let lane = laneData.find(l => l.laneIdx === currentStep.laneIdx);
                     frog.y += lane.speed * lane.dir;
                     if (frog.y < -40 || frog.y > canvas.height + 40) {
-                        gameState = "lose";
-                        playSynth('splash', 0.5);
+                        gameState = "lose"; playSynth('splash', 0.5);
                     }
                 }
             }
@@ -238,8 +236,7 @@
                 frog.x = frog.oldX + (frog.targetX - frog.oldX) * frog.jumpT;
                 drawFrog(frog.x, frog.oldY - arc);
                 if (frog.jumpT >= 1) {
-                    frog.x = frog.targetX;
-                    frog.isJumping = false;
+                    frog.x = frog.targetX; frog.isJumping = false;
                     checkLanding();
                 }
             } else {
@@ -267,22 +264,16 @@
                 let lane = laneData.find(l => l.laneIdx === currentStep.laneIdx);
                 let onAnyLog = lane.logs.some(log => frog.y >= log.y && frog.y <= log.y + lane.logH);
                 if (!onAnyLog) {
-                    gameState = "lose";
-                    playSynth('splash', 0.5);
-                }
+                    gameState = "lose"; playSynth('splash', 0.5);
+                } else if (navigator.vibrate) navigator.vibrate(60);
             }
         }
 
         function drawFrog(x, y) {
-            // Thick White Outline
             ctx.fillStyle = 'white';
             ctx.beginPath(); ctx.arc(x, y, 48, 0, Math.PI * 2); ctx.fill();
-
-            // Neon Green Body
             ctx.fillStyle = '#00FF00';
             ctx.beginPath(); ctx.arc(x, y, 40, 0, Math.PI*2); ctx.fill();
-
-            // Eyes
             ctx.fillStyle = "white";
             ctx.beginPath(); ctx.arc(x-15, y-10, 11, 0, Math.PI*2); ctx.fill();
             ctx.beginPath(); ctx.arc(x+15, y-10, 11, 0, Math.PI*2); ctx.fill();
@@ -292,6 +283,7 @@
         }
 
         function megaCelebration(x, y) {
+            if (lowSensoryMode) return; // Skip flashes/lasers in low sensory
             flash.style.backgroundColor = "white";
             flash.style.opacity = 1;
             setTimeout(() => flash.style.opacity = 0, 400);
