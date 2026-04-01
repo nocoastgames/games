@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>CATEGORY SORT - PHASE 6</title>
+    <style>
+        body { 
+            background-color: #000; margin: 0; overflow: hidden; 
+            display: flex; flex-direction: column; justify-content: center; 
+            align-items: center; height: 100vh; font-family: 'Arial Black', sans-serif;
+            user-select: none; touch-action: manipulation;
+        }
+
+        #home-button {
+            position: fixed; top: 15px; left: 15px; z-index: 1000;
+            color: white; text-decoration: none; font-size: 24px;
+            background: rgba(255, 255, 255, 0.1); padding: 10px; 
+            border-radius: 10px; opacity: 0.3; transition: opacity 0.3s;
+        }
+        #home-button:hover { opacity: 1.0; background: rgba(255, 255, 255, 0.3); }
+
+        #overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: #000; color: #FFF; display: flex; 
+            flex-direction: column; justify-content: center; align-items: center; 
+            z-index: 100; text-align: center;
+        }
+        .settings-card {
+            background: #111; padding: 30px; border-radius: 30px;
+            border: 4px solid #FFFFFF; width: 85%; max-width: 500px;
+        }
+        .btn-ui {
+            font-size: 35px; padding: 15px 40px; border: 6px solid #FFF;
+            background: transparent; color: #FFF; font-weight: bold;
+            border-radius: 20px; cursor: pointer; margin-top: 20px;
+        }
+
+        #item-display { font-size: 150px; margin-bottom: 50px; transition: 0.5s; z-index: 10; }
+        
+        .bin-container { display: flex; gap: 40px; z-index: 10; width: 90%; justify-content: center; }
+        .bin {
+            width: 300px; height: 200px; border: 8px solid #333;
+            border-radius: 25px; display: flex; flex-direction: column;
+            justify-content: center; align-items: center; background: #080808;
+            transition: 0.3s;
+        }
+        .bin-label { font-size: 32px; color: #888; margin-bottom: 10px; }
+        .bin-icons { font-size: 50px; }
+
+        .active {
+            border-color: #00FFFF; transform: scale(1.1);
+            box-shadow: 0 0 60px rgba(0, 255, 255, 0.5); background: #111;
+        }
+        .active .bin-label { color: #00FFFF; }
+
+        canvas { position: absolute; top: 0; left: 0; pointer-events: none; z-index: 5; }
+        #flash { position: fixed; top:0; left:0; width:100%; height:100%; opacity: 0; z-index: 150; pointer-events: none; }
+    </style>
+</head>
+<body onkeydown="handleKeyDown(event)" onkeyup="handleKeyUp(event)" onmousedown="handleMouseDown(event)" onmouseup="handleMouseUp(event)">
+
+    <a id="home-button" href="../index.html">🏠</a>
+    <div id="flash"></div>
+
+    <div id="overlay">
+        <div class="settings-card">
+            <h2 style="color: #00FFFF;">PHASE 6: LOGIC SORT</h2>
+            <p>Scanning Speed: <span id="speed-val">2.0</span>s</p>
+            <input type="range" id="speed-slider" min="0.8" max="5.0" step="0.1" value="2.0" style="width:100%;">
+            
+            <p>Sort By:</p>
+            <select id="set-select" style="font-size:22px; padding:10px; border-radius:10px; width:100%;">
+                <option value="size">Size (Big vs Small)</option>
+                <option value="colors">Color (Warm vs Cool)</option>
+                <option value="food-animals">Category (Food vs Animals)</option>
+            </select>
+
+            <button class="btn-ui" onclick="startEngine()">START SORTING</button>
+        </div>
+    </div>
+
+    <div id="item-display">?</div>
+
+    <div class="bin-container">
+        <div id="bin-0" class="bin"><div class="bin-label" id="label-0">Group 1</div><div class="bin-icons" id="icons-0"></div></div>
+        <div id="bin-1" class="bin"><div class="bin-label" id="label-1">Group 2</div><div class="bin-icons" id="icons-1"></div></div>
+    </div>
+
+    <canvas id="gameCanvas"></canvas>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const flash = document.getElementById('flash');
+        const itemDisplay = document.getElementById('item-display');
+        
+        const lowSensoryMode = localStorage.getItem('lowSensory') === 'true';
+
+        let audioCtx, isStarted = false, isWinner = false;
+        let switchIsDown = false, inputBlocked = false;
+
+        // --- CATEGORY DATA ---
+        const categories = {
+            'size': {
+                bin0: { label: 'BIG', icons: '🐘🏯', items: ['🐘', '🐳', '🏢', '🦖', '🚛'], type: 'large' },
+                bin1: { label: 'SMALL', icons: '🐜🐭', items: ['🐜', '🐭', '🍓', '🐝', '📎'], type: 'small' }
+            },
+            'colors': {
+                bin0: { label: 'WARM', icons: '🍎🔥', items: ['🍎', '🔥', '🦀', '🍊', '🍓'], type: 'warm' },
+                bin1: { label: 'COOL', icons: '❄️🧊', items: ['❄️', '🐳', '💎', '🍇', '🫐'], type: 'cool' }
+            },
+            'food-animals': {
+                bin0: { label: 'FOOD', icons: '🍎🍕', items: ['🍎', '🍕', '🍩', '🍔', '🍦'], type: 'food' },
+                bin1: { label: 'ANIMALS', icons: '🐶🐱', items: ['🐶', '🐱', '🦁', '🐘', '🐸'], type: 'animal' }
+            }
+        };
+
+        let activeSet = 'size';
+        let correctAnswer = 0;
+        let activeIdx = 0;
+        let scanTimer;
+        let scanSpeed = 2000;
+
+        document.getElementById('speed-slider').oninput = function() {
+            document.getElementById('speed-val').innerText = this.value;
+            scanSpeed = parseFloat(this.value) * 1000;
+        };
+
+        function startEngine() {
+            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            activeSet = document.getElementById('set-select').value;
+            canvas.width = window.innerWidth; canvas.height = window.innerHeight;
+            document.getElementById('overlay').style.display = 'none';
+            isStarted = true;
+            setupBins();
+            nextRound();
+            startScan();
+            requestAnimationFrame(drawParticles);
+        }
+
+        function setupBins() {
+            const set = categories[activeSet];
+            document.getElementById('label-0').innerText = set.bin0.label;
+            document.getElementById('icons-0').innerText = set.bin0.icons;
+            document.getElementById('label-1').innerText = set.bin1.label;
+            document.getElementById('icons-1').innerText = set.bin1.icons;
+        }
+
+        function speak(text) {
+            window.speechSynthesis.cancel(); // Stop current speech
+            const msg = new SpeechSynthesisUtterance(text);
+            msg.rate = 0.9;
+            window.speechSynthesis.speak(msg);
+        }
+
+        function nextRound() {
+            isWinner = false; inputBlocked = false;
+            const set = categories[activeSet];
+            correctAnswer = Math.random() > 0.5 ? 0 : 1;
+            const pool = correctAnswer === 0 ? set.bin0.items : set.bin1.items;
+            const item = pool[Math.floor(Math.random() * pool.length)];
+            
+            itemDisplay.innerText = item;
+            itemDisplay.style.transform = "scale(1)";
+            itemDisplay.style.opacity = "1";
+
+            // Visual Cue for "Size" mode
+            if (activeSet === 'size') {
+                itemDisplay.style.fontSize = (correctAnswer === 0) ? "250px" : "60px";
+            } else {
+                itemDisplay.style.fontSize = "150px";
+            }
+        }
+
+        function startScan() {
+            if(scanTimer) clearInterval(scanTimer);
+            scanTimer = setInterval(() => {
+                if (isWinner || inputBlocked) return;
+                activeIdx = (activeIdx + 1) % 2;
+                updateVisualSelection();
+                playSynth('tick', 0.1);
+                
+                // --- SPEAK THE BIN LABEL ---
+                const label = document.getElementById(`label-${activeIdx}`).innerText;
+                speak(label);
+
+            }, scanSpeed);
+            updateVisualSelection();
+            speak(document.getElementById(`label-${activeIdx}`).innerText);
+        }
+
+        function updateVisualSelection() {
+            document.getElementById('bin-0').className = (activeIdx === 0) ? 'bin active' : 'bin';
+            document.getElementById('bin-1').className = (activeIdx === 1) ? 'bin active' : 'bin';
+        }
+
+        function handleKeyDown(e) { if (!e.repeat && (e.code === "Space" || e.code === "Enter")) processInput(); }
+        function handleKeyUp(e) { if (e.code === "Space" || e.code === "Enter") switchIsDown = false; }
+        function handleMouseDown(e) { if (e.target.id === 'home-button' || e.target.type === 'range' || e.target.tagName === 'SELECT') return; processInput(); }
+        function handleMouseUp() { switchIsDown = false; }
+
+        function processInput() {
+            if (!isStarted || isWinner || inputBlocked || switchIsDown) return;
+            switchIsDown = true;
+            if (activeIdx === correctAnswer) success();
+            else fail();
+        }
+
+        function success() {
+            isWinner = true;
+            playSynth('win', 0.5);
+            speak("Yes! Correct.");
+            itemDisplay.style.transform = `translateY(400px) scale(0.1)`;
+            itemDisplay.style.opacity = "0";
+            if (!lowSensoryMode) triggerMegaParty();
+            setTimeout(nextRound, 3500);
+        }
+
+        function fail() {
+            inputBlocked = true;
+            playSynth('fail', 0.3);
+            speak("Try again.");
+            const el = document.getElementById(`bin-${activeIdx}`);
+            el.style.borderColor = "#FF0000";
+            itemDisplay.style.transform = "translateX(30px)"; 
+            setTimeout(() => {
+                el.style.borderColor = "#333";
+                itemDisplay.style.transform = "translateX(0px)";
+                inputBlocked = false;
+            }, 1000);
+        }
+
+        function playSynth(type, vol) {
+            const now = audioCtx.currentTime;
+            const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain();
+            osc.connect(gain); gain.connect(audioCtx.destination);
+            if (type === 'tick') {
+                osc.frequency.setValueAtTime(200, now); gain.gain.setValueAtTime(vol, now);
+                gain.gain.exponentialRampToValueAtTime(0.001, now + 0.05); osc.start(); osc.stop(now + 0.05);
+            } else if (type === 'win') {
+                osc.type = 'triangle'; osc.frequency.setValueAtTime(440, now);
+                osc.frequency.exponentialRampToValueAtTime(880, now + 0.5); gain.gain.setValueAtTime(vol, now);
+                gain.gain.exponentialRampToValueAtTime(0.001, now + 0.5); osc.start(); osc.stop(now + 0.5);
+            } else if (type === 'fail') {
+                osc.type = 'sawtooth'; osc.frequency.setValueAtTime(100, now);
+                gain.gain.setValueAtTime(vol, now); gain.gain.exponentialRampToValueAtTime(0.001, now + 0.3);
+                osc.start(); osc.stop(now + 0.3);
+            }
+        }
+
+        let particles = [], lasers = [];
+        function triggerMegaParty() {
+            flash.style.backgroundColor = "white"; flash.style.opacity = 0.3;
+            setTimeout(() => flash.style.opacity = 0, 100);
+            for(let i=0; i<8; i++) lasers.push({x: Math.random()*canvas.width, y: Math.random()*canvas.height, angle: Math.random()*Math.PI*2, life: 1});
+            for(let i=0; i<20; i++) particles.push({x: canvas.width/2, y: canvas.height/2, vx: (Math.random()-0.5)*25, vy: (Math.random()-0.5)*25, life: 1, color: '#00FFFF', s: 15});
+        }
+        function drawParticles() {
+            ctx.clearRect(0,0,canvas.width, canvas.height);
+            lasers.forEach(l => { ctx.strokeStyle = `rgba(0, 255, 255, ${l.life})`; ctx.lineWidth = 15*l.life; ctx.beginPath(); ctx.moveTo(l.x, l.y); ctx.lineTo(l.x+Math.cos(l.angle)*2000, l.y+Math.sin(l.angle)*2000); ctx.stroke(); l.life -= 0.03; });
+            particles.forEach(p => { ctx.fillStyle = p.color; ctx.globalAlpha = p.life; ctx.beginPath(); ctx.arc(p.x, p.y, p.s, 0, Math.PI*2); ctx.fill(); p.x += p.vx; p.y += p.vy; p.life -= 0.02; });
+            lasers = lasers.filter(l => l.life > 0); particles = particles.filter(p => p.life > 0);
+            requestAnimationFrame(drawParticles);
+        }
+    </script>
+</body>
+</html>
