@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>FEED THE MONSTER</title>
+    <title>FEED THE MONSTER - 3D MODE</title>
     <style>
         body { 
             background-color: #000; margin: 0; overflow: hidden; 
@@ -46,12 +46,12 @@
 
     <div id="overlay" onclick="startEngine()">
         <div class="btn-ui">FEED THE MONSTER</div>
-        <p style="margin-top: 20px; color: white; font-size: 24px;">(Tap to launch snacks!)</p>
+        <p style="margin-top: 20px; color: white; font-size: 24px;">(Slowly guide the food into the mouth!)</p>
     </div>
 
     <div id="win-overlay">
-        <h2 style="color: #ccff00; font-size: 80px; margin: 0;">YUM YUM!</h2>
-        <p style="color: white; font-size: 30px;">FULL TUMMY!</p>
+        <h2 style="color: #ccff00; font-size: 80px; margin: 0;">BURRRRRRP!</h2>
+        <p style="color: white; font-size: 30px;">THE MONSTER IS FULL!</p>
     </div>
 
     <div id="hud">Snacks: 0/10</div>
@@ -72,13 +72,13 @@
         const lowSensoryMode = localStorage.getItem('lowSensory') === 'true';
 
         let audioCtx, isStarted = false, gameState = "play";
-        let lastPressTime = 0, cooldown = 500;
+        let lastPressTime = 0, cooldown = 800;
         let snackCount = 0;
         
         let monsterScale = 1;
-        let mouthOpen = 0; // 0 to 1
+        let mouthOpen = 0; 
         let activeSnack = null;
-        const snacks = ['🍕', '🍩', '🌮', '🍔', '🍦', '🍎', '🍰'];
+        const snacks = ['🍕', '🍩', '🌮', '🍔', '🍦', '🍎', '🍰', '🍉', '🥨'];
 
         let particles = [], lasers = [];
 
@@ -106,14 +106,26 @@
 
         function launchSnack() {
             const emoji = snacks[Math.floor(Math.random() * snacks.length)];
+            
+            // Random direction from the edges
+            const side = Math.floor(Math.random() * 4);
+            let startX, startY;
+            if(side === 0) { startX = Math.random()*canvas.width; startY = -100; } // Top
+            else if(side === 1) { startX = Math.random()*canvas.width; startY = canvas.height+100; } // Bottom
+            else if(side === 2) { startX = -100; startY = Math.random()*canvas.height; } // Left
+            else { startX = canvas.width+100; startY = Math.random()*canvas.height; } // Right
+
             activeSnack = {
                 emoji: emoji,
-                y: canvas.height + 100,
-                x: canvas.width / 2,
+                x: startX,
+                y: startY,
+                startX: startX,
+                startY: startY,
+                targetX: canvas.width / 2,
                 targetY: canvas.height * 0.55,
                 progress: 0
             };
-            playSynth('slide', 0.3);
+            playSynth('slide', 0.2);
         }
 
         function playSynth(type, vol) {
@@ -123,32 +135,32 @@
             const now = audioCtx.currentTime;
 
             if (type === 'slide') {
-                osc.frequency.setValueAtTime(200, now);
-                osc.frequency.exponentialRampToValueAtTime(600, now + 0.3);
+                osc.frequency.setValueAtTime(100, now);
+                osc.frequency.exponentialRampToValueAtTime(400, now + 0.8);
                 gain.gain.setValueAtTime(vol, now);
-                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.3);
-                osc.start(); osc.stop(now + 0.3);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.8);
+                osc.start(); osc.stop(now + 0.8);
             } else if (type === 'chomp') {
                 osc.type = 'square';
                 osc.frequency.setValueAtTime(150, now);
-                osc.frequency.exponentialRampToValueAtTime(50, now + 0.2);
+                osc.frequency.exponentialRampToValueAtTime(40, now + 0.2);
                 gain.gain.setValueAtTime(vol, now);
                 gain.gain.exponentialRampToValueAtTime(0.01, now + 0.2);
                 osc.start(); osc.stop(now + 0.2);
             } else if (type === 'burp') {
                 osc.type = 'sawtooth';
-                osc.frequency.setValueAtTime(100, now);
-                osc.frequency.linearRampToValueAtTime(60, now + 0.5);
+                osc.frequency.setValueAtTime(80, now);
+                osc.frequency.linearRampToValueAtTime(40, now + 1.2);
                 gain.gain.setValueAtTime(vol, now);
-                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.5);
-                osc.start(); osc.stop(now + 0.5);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 1.2);
+                osc.start(); osc.stop(now + 1.2);
             }
         }
 
         function triggerWin() {
             gameState = "win";
             winOverlay.style.display = 'flex';
-            playSynth('burp', 0.8);
+            playSynth('burp', 0.9);
             
             let winTimer = setInterval(() => {
                 if (!lowSensoryMode) spawnVictory(Math.random()*canvas.width, Math.random()*canvas.height);
@@ -160,12 +172,12 @@
                 hud.innerText = `Snacks: 0/10`;
                 gameState = "play";
                 winOverlay.style.display = 'none';
-            }, 5000);
+            }, 6000);
         }
 
         function spawnVictory(x, y) {
             if (lowSensoryMode) return;
-            flash.style.backgroundColor = "white"; flash.style.opacity = 0.5;
+            flash.style.backgroundColor = "white"; flash.style.opacity = 0.4;
             setTimeout(() => flash.style.opacity = 0, 100);
             for(let i=0; i<8; i++) lasers.push({x: x, y: y, angle: Math.random()*Math.PI*2, life: 1});
         }
@@ -177,34 +189,43 @@
             const mx = canvas.width / 2;
             const my = canvas.height * 0.5;
 
-            // 1. Animate Snack
+            // 1. Animate Snack (Slower Progress)
             if (activeSnack) {
-                activeSnack.progress += 0.04;
-                activeSnack.y = canvas.height - (canvas.height * 0.5 * activeSnack.progress);
-                mouthOpen = activeSnack.progress > 0.7 ? 1 : 0;
+                activeSnack.progress += 0.012; // Much Slower
+                activeSnack.x = activeSnack.startX + (activeSnack.targetX - activeSnack.startX) * activeSnack.progress;
+                activeSnack.y = activeSnack.startY + (activeSnack.targetY - activeSnack.startY) * activeSnack.progress;
+                
+                // Open mouth as it gets close
+                mouthOpen = activeSnack.progress > 0.65 ? 1 : 0;
 
                 if (activeSnack.progress >= 1) {
                     activeSnack = null;
                     snackCount++;
                     hud.innerText = `Snacks: ${snackCount}/10`;
                     mouthOpen = 0;
-                    monsterScale = 1.4;
-                    playSynth('chomp', 0.5);
+                    monsterScale = 1.6;
+                    playSynth('chomp', 0.6);
                     if (snackCount >= 10) triggerWin();
                 }
             }
 
-            // 2. Monster Bounce
-            monsterScale += (1 - monsterScale) * 0.1;
+            // 2. Monster Physics
+            monsterScale += (1 - monsterScale) * 0.08;
 
             // 3. Draw Monster
             drawMonster(mx, my, monsterScale);
 
-            // 4. Draw Snack
+            // 4. Draw Snack with 3D Scaling
             if (activeSnack) {
-                ctx.font = "80px Arial";
+                // Scale from 3.5x down to 0.4x to show depth
+                let currentScale = 3.5 - (3.1 * activeSnack.progress);
+                ctx.save();
+                ctx.translate(activeSnack.x, activeSnack.y);
+                ctx.scale(currentScale, currentScale);
+                ctx.font = "60px Arial";
                 ctx.textAlign = "center";
-                ctx.fillText(activeSnack.emoji, activeSnack.x, activeSnack.y);
+                ctx.fillText(activeSnack.emoji, 0, 0);
+                ctx.restore();
             }
 
             drawEffects();
@@ -216,40 +237,51 @@
             ctx.translate(x, y);
             ctx.scale(scale, scale);
 
+            // Fuzzy Spikes/Texture
+            ctx.strokeStyle = "#ccff00";
+            ctx.lineWidth = 10;
+            for(let i=0; i<12; i++) {
+                ctx.rotate(Math.PI/6);
+                ctx.beginPath(); ctx.moveTo(140, 0); ctx.lineTo(170, 0); ctx.stroke();
+            }
+
             // Body
-            ctx.fillStyle = "#ccff00"; // Neon Lime
-            ctx.shadowBlur = 30; ctx.shadowColor = "#ccff00";
-            ctx.beginPath();
-            ctx.ellipse(0, 0, 150, 180, 0, 0, Math.PI * 2);
-            ctx.fill();
+            ctx.fillStyle = "#ccff00";
+            ctx.shadowBlur = 40; ctx.shadowColor = "#ccff00";
+            ctx.beginPath(); ctx.ellipse(0, 0, 160, 190, 0, 0, Math.PI * 2); ctx.fill();
+
+            // Horns
+            ctx.fillStyle = "#FFF";
+            ctx.beginPath(); ctx.moveTo(-100, -140); ctx.lineTo(-140, -220); ctx.lineTo(-60, -160); ctx.fill();
+            ctx.beginPath(); ctx.moveTo(100, -140); ctx.lineTo(140, -220); ctx.lineTo(60, -160); ctx.fill();
 
             // Eyes
+            const eyeY = -80;
             ctx.fillStyle = "white";
-            ctx.beginPath(); ctx.arc(-60, -80, 45, 0, Math.PI * 2); ctx.fill();
-            ctx.beginPath(); ctx.arc(60, -80, 45, 0, Math.PI * 2); ctx.fill();
+            ctx.beginPath(); ctx.arc(-70, eyeY, 50, 0, Math.PI * 2); ctx.fill();
+            ctx.beginPath(); ctx.arc(70, eyeY, 40, 0, Math.PI * 2); ctx.fill(); // Goofy uneven sizes
             
-            // Pupils
+            // Pupils (Track Snack)
             ctx.fillStyle = "black";
-            const eyeWiggle = Math.sin(Date.now() * 0.005) * 10;
-            ctx.beginPath(); ctx.arc(-60 + eyeWiggle, -80, 15, 0, Math.PI * 2); ctx.fill();
-            ctx.beginPath(); ctx.arc(60 + eyeWiggle, -80, 15, 0, Math.PI * 2); ctx.fill();
+            let lookX = 0, lookY = 0;
+            if (activeSnack) {
+                lookX = (activeSnack.x - canvas.width/2) * 0.05;
+                lookY = (activeSnack.y - canvas.height/2) * 0.05;
+            }
+            ctx.beginPath(); ctx.arc(-70 + lookX, eyeY + lookY, 18, 0, Math.PI * 2); ctx.fill();
+            ctx.beginPath(); ctx.arc(70 + lookX, eyeY + lookY, 14, 0, Math.PI * 2); ctx.fill();
 
             // Mouth
-            ctx.fillStyle = "#222";
             if (mouthOpen > 0) {
-                ctx.beginPath();
-                ctx.ellipse(0, 50, 80, 60, 0, 0, Math.PI * 2);
-                ctx.fill();
-                // Teeth
-                ctx.fillStyle = "white";
-                ctx.beginPath(); ctx.moveTo(-40, 20); ctx.lineTo(-20, 20); ctx.lineTo(-30, 45); ctx.fill();
-                ctx.beginPath(); ctx.moveTo(40, 20); ctx.lineTo(20, 20); ctx.lineTo(30, 45); ctx.fill();
+                ctx.fillStyle = "#111";
+                ctx.beginPath(); ctx.ellipse(0, 60, 90, 70, 0, 0, Math.PI * 2); ctx.fill();
+                // Tongue
+                ctx.fillStyle = "#ff0066";
+                ctx.beginPath(); ctx.ellipse(0, 100, 40, 20, 0, 0, Math.PI*2); ctx.fill();
             } else {
                 ctx.strokeStyle = "black";
-                ctx.lineWidth = 8;
-                ctx.beginPath();
-                ctx.arc(0, 40, 50, 0.1 * Math.PI, 0.9 * Math.PI);
-                ctx.stroke();
+                ctx.lineWidth = 12; ctx.lineCap = "round";
+                ctx.beginPath(); ctx.arc(0, 40, 60, 0.2 * Math.PI, 0.8 * Math.PI); ctx.stroke();
             }
 
             ctx.restore();
@@ -259,13 +291,18 @@
         function drawEffects() {
             lasers.forEach(l => {
                 ctx.strokeStyle = `rgba(204, 255, 0, ${l.life})`;
-                ctx.lineWidth = 15 * l.life;
+                ctx.lineWidth = 20 * l.life;
                 ctx.beginPath(); ctx.moveTo(l.x, l.y);
-                ctx.lineTo(l.x + Math.cos(l.angle) * 2000, l.y + Math.sin(l.angle) * 2000);
+                ctx.lineTo(l.x + Math.cos(l.angle) * 2500, l.y + Math.sin(l.angle) * 2500);
                 ctx.stroke();
                 l.life -= 0.03;
             });
             lasers = lasers.filter(l => l.life > 0);
+        }
+
+        window.onresize = () => {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
         }
     </script>
 </body>
