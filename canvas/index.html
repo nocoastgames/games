@@ -3,67 +3,73 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>NEON CANVAS - MASTERPIECE</title>
+    <title>NEON CANVAS - PRO</title>
     <style>
         body { 
             background-color: #000; margin: 0; overflow: hidden; 
-            display: flex; justify-content: center; align-items: center; 
-            height: 100vh; font-family: 'Arial Black', sans-serif;
+            display: flex; flex-direction: column; justify-content: center; 
+            align-items: center; height: 100vh; font-family: sans-serif;
             user-select: none; touch-action: manipulation;
         }
 
+        /* UNOBTRUSIVE HOME */
         #home-button {
             position: fixed; top: 15px; left: 15px; z-index: 1000;
             color: white; text-decoration: none; font-size: 24px;
             background: rgba(255, 255, 255, 0.1); padding: 10px; 
-            border-radius: 10px; opacity: 0.3; transition: opacity 0.3s;
+            border-radius: 12px; opacity: 0.3; transition: 0.3s;
+            border: 1px solid rgba(255,255,255,0.2);
         }
-        #home-button:hover { opacity: 1.0; background: rgba(255, 255, 255, 0.3); }
+        #home-button:hover { opacity: 1.0; background: rgba(255, 255, 255, 0.2); }
+
+        /* PRO START BUTTON */
+        #overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: #000; display: flex; 
+            flex-direction: column; justify-content: center; align-items: center; 
+            z-index: 500;
+        }
+        .btn-start {
+            font-size: 40px; padding: 25px 50px; border: 4px solid #FFFFFF;
+            background: transparent; color: #FFFFFF; font-weight: bold;
+            border-radius: 20px; cursor: pointer; box-shadow: 0 0 20px rgba(255,255,255,0.2);
+            transition: 0.2s;
+        }
+        .btn-start:hover { background: #FFFFFF; color: #000; }
 
         /* WIN OVERLAY */
         #win-overlay {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
             background: rgba(0,0,0,0.7); display: none; 
             flex-direction: column; justify-content: center; align-items: center; 
-            z-index: 200; text-align: center; pointer-events: none;
+            z-index: 400; text-align: center; pointer-events: none;
         }
         .bravo-text {
-            color: #00FF00; font-size: 80px; text-shadow: 0 0 20px #00FF00;
-            margin: 0; animation: pulse 0.5s infinite alternate;
-        }
-        @keyframes pulse { from { transform: scale(1); } to { transform: scale(1.1); } }
-
-        #overlay {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: #000; color: #00FF00; display: flex; 
-            flex-direction: column; justify-content: center; align-items: center; 
-            z-index: 100; cursor: pointer; text-align: center;
-        }
-        .btn-ui {
-            font-size: 50px; padding: 30px 60px; border: 8px solid #00FF00;
-            background: transparent; color: #00FF00; font-weight: bold;
-            border-radius: 20px; box-shadow: 0 0 30px #00FF00;
+            color: #00FF00; font-size: clamp(50px, 10vw, 100px); font-weight: 900;
+            text-shadow: 0 0 20px #00FF00; margin: 0;
         }
 
         canvas { display: block; position: absolute; top: 0; left: 0; }
-        #hud { position: absolute; top: 20px; right: 20px; color: #FFF; font-size: 30px; font-weight: bold; z-index: 50; }
+        #flash { position: fixed; top:0; left:0; width:100%; height:100%; opacity: 0; z-index: 150; pointer-events: none; }
+        #hud { position: absolute; top: 20px; right: 20px; color: #FFF; font-size: 24px; font-weight: bold; opacity: 0.5; z-index: 50; }
     </style>
 </head>
 <body onmousedown="handleInput(event)" onkeydown="handleInput(event)">
 
     <a id="home-button" href="../index.html">🏠</a>
+    <div id="flash"></div>
 
-    <div id="overlay" onclick="startEngine()">
-        <div class="btn-ui">START PAINTING</div>
-        <p style="margin-top: 20px; color: white; font-size: 24px;">(Fill the canvas with 10 splashes!)</p>
+    <div id="overlay">
+        <button class="btn-start" onclick="startEngine(event)">START PAINTING</button>
+        <p style="color: #666; margin-top: 20px; letter-spacing: 1px;">PHASE 1: CREATIVE IMPACT</p>
     </div>
 
     <div id="win-overlay">
         <p class="bravo-text">BRAVO!</p>
-        <p style="color: white; font-size: 32px;">IT'S A MASTERPIECE!</p>
+        <p style="color: white; font-size: 32px; font-weight: bold;">A MASTERPIECE!</p>
     </div>
 
-    <div id="hud">Splats: 0/10</div>
+    <div id="hud">SPLATS: <span id="hit-count">0</span>/10</div>
     <canvas id="mainCanvas"></canvas>
     <canvas id="fxCanvas"></canvas>
 
@@ -76,98 +82,108 @@
         const mCtx = mCanvas.getContext('2d');
         const fCanvas = document.getElementById('fxCanvas');
         const fCtx = fCanvas.getContext('2d');
-        const hud = document.getElementById('hud');
+        const flash = document.getElementById('flash');
+        const hitDisplay = document.getElementById('hit-count');
         const winOverlay = document.getElementById('win-overlay');
         const bgMusic = document.getElementById('bg-music');
         
+        // --- PRO HUB SETTINGS ---
         const lowSensoryMode = localStorage.getItem('lowSensory') === 'true';
+        const isMuted = localStorage.getItem('muteMusic') === 'true';
 
         let audioCtx, isStarted = false, isCleaning = false, gameState = "play";
-        let lastPressTime = 0, cooldown = 300;
-        let splatCount = 0, squeegeeX = -200;
+        let lastPressTime = 0, cooldown = 400;
+        let splatCount = 0, squeegeeX = -300;
 
         const neonColors = ['#00FFFF', '#FF00FF', '#00FF00', '#FFFF00', '#FF4500', '#FF0000', '#FFFFFF'];
 
-        function startEngine() {
-            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        function startEngine(e) {
+            if(e) e.stopPropagation();
+            try {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                if (!isMuted) {
+                    bgMusic.volume = 0.15;
+                    bgMusic.play().catch(err => console.log("Audio block"));
+                }
+            } catch (err) {}
+
             resize();
-            bgMusic.volume = 0.15; bgMusic.play();
             document.getElementById('overlay').style.display = 'none';
             isStarted = true;
             requestAnimationFrame(gameLoop);
         }
 
-        function resize() {
-            mCanvas.width = fCanvas.width = window.innerWidth;
-            mCanvas.height = fCanvas.height = window.innerHeight;
-            mCtx.fillStyle = "black"; mCtx.fillRect(0,0, mCanvas.width, mCanvas.height);
-        }
-
         function handleInput(event) {
-            if (event.target.id === 'home-button' || !isStarted || gameState !== "play") return;
+            if (!isStarted || gameState !== "play") return;
+            if (event.target.id === 'home-button' || event.target.className === 'btn-start') return;
             if (event.type === 'keydown' && event.code !== "Space" && event.code !== "Enter") return;
 
             const now = Date.now();
             if (now - lastPressTime < cooldown) return;
             lastPressTime = now;
 
+            // --- DATA COLLECTION ---
             splatCount++;
-            hud.innerText = `Splats: ${splatCount}/10`;
-            
-            // Create a "Mega Splat" (Multiple blobs per click)
+            hitDisplay.innerText = splatCount;
+            let totalS = parseInt(localStorage.getItem('statSuccess') || 0);
+            localStorage.setItem('statSuccess', totalS + 1);
+
+            triggerSplat();
+        }
+
+        function triggerSplat() {
             const centerX = Math.random() * mCanvas.width;
             const centerY = Math.random() * mCanvas.height;
             const color = neonColors[Math.floor(Math.random() * neonColors.length)];
             
-            // 1. Main large blob
-            createBlob(centerX, centerY, color, 150 + Math.random() * 150);
-            
-            // 2. Satellite blobs (Varying shapes)
-            for(let i=0; i<5; i++) {
-                const ox = (Math.random()-0.5) * 300;
-                const oy = (Math.random()-0.5) * 300;
-                createBlob(centerX + ox, centerY + oy, color, 40 + Math.random() * 80);
+            // Draw Paint
+            createBlob(centerX, centerY, color, 160 + Math.random() * 140);
+            for(let i=0; i<4; i++) {
+                createBlob(centerX + (Math.random()-0.5)*300, centerY + (Math.random()-0.5)*300, color, 40 + Math.random()*60);
             }
 
             playSplatSound();
-            if (navigator.vibrate) navigator.vibrate(60);
 
-            if (splatCount >= 10) triggerVictory();
+            if (!lowSensoryMode) {
+                flash.style.backgroundColor = "rgba(255,255,255,0.2)";
+                flash.style.opacity = 1;
+                setTimeout(() => flash.style.opacity = 0, 50);
+            }
+
+            if (splatCount >= 10) {
+                gameState = "win";
+                setTimeout(triggerVictory, 800);
+            }
+            if (navigator.vibrate) navigator.vibrate(60);
         }
 
         function createBlob(x, y, color, size) {
             mCtx.save();
             mCtx.translate(x, y);
             mCtx.fillStyle = color;
-            mCtx.shadowBlur = 30; mCtx.shadowColor = color;
+            if (!lowSensoryMode) { mCtx.shadowBlur = 30; mCtx.shadowColor = color; }
 
             mCtx.beginPath();
-            const points = 8 + Math.floor(Math.random() * 8);
+            const points = 10;
             for (let i = 0; i <= points; i++) {
                 const angle = (i / points) * Math.PI * 2;
-                const variance = 0.5 + Math.random() * 0.8;
+                const variance = 0.6 + Math.random() * 0.7;
                 const tx = Math.cos(angle) * (size * variance);
                 const ty = Math.sin(angle) * (size * variance);
                 if (i === 0) mCtx.moveTo(tx, ty);
                 else mCtx.quadraticCurveTo(0, 0, tx, ty);
             }
             mCtx.fill();
-            
-            // Add Drips
-            if (Math.random() > 0.5) {
-                mCtx.beginPath();
-                mCtx.roundRect(-size/10, 0, size/5, size * (1 + Math.random()), 20);
-                mCtx.fill();
-            }
             mCtx.restore();
         }
 
         function playSplatSound() {
+            if(!audioCtx) return;
             const osc = audioCtx.createOscillator();
             const gain = audioCtx.createGain();
             osc.connect(gain); gain.connect(audioCtx.destination);
             osc.type = 'triangle';
-            osc.frequency.setValueAtTime(150 + Math.random()*100, audioCtx.currentTime);
+            osc.frequency.setValueAtTime(180, audioCtx.currentTime);
             osc.frequency.exponentialRampToValueAtTime(40, audioCtx.currentTime + 0.2);
             gain.gain.setValueAtTime(0.4, audioCtx.currentTime);
             gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.2);
@@ -175,20 +191,18 @@
         }
 
         function triggerVictory() {
-            gameState = "win";
             winOverlay.style.display = 'flex';
-            
-            // Victory Fanfare
-            const notes = [261, 329, 392, 523, 659];
-            notes.forEach((f, i) => {
-                const o = audioCtx.createOscillator(); const g = audioCtx.createGain();
-                o.connect(g); g.connect(audioCtx.destination);
-                o.frequency.setValueAtTime(f, audioCtx.currentTime + i*0.1);
-                g.gain.setValueAtTime(0.3, audioCtx.currentTime + i*0.1);
-                g.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + i*0.1 + 0.4);
-                o.start(audioCtx.currentTime + i*0.1); o.stop(audioCtx.currentTime + i*0.1 + 0.4);
-            });
-
+            if (!isMuted) {
+                const notes = [261, 329, 392, 523];
+                notes.forEach((f, i) => {
+                    const o = audioCtx.createOscillator(); const g = audioCtx.createGain();
+                    o.connect(g); g.connect(audioCtx.destination);
+                    o.frequency.setValueAtTime(f, audioCtx.currentTime + i*0.12);
+                    g.gain.setValueAtTime(0.3, audioCtx.currentTime + i*0.12);
+                    g.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + i*0.12 + 0.4);
+                    o.start(audioCtx.currentTime + i*0.12); o.stop(audioCtx.currentTime + i*0.12 + 0.4);
+                });
+            }
             setTimeout(() => {
                 winOverlay.style.display = 'none';
                 startCleanup();
@@ -197,44 +211,42 @@
 
         function startCleanup() {
             isCleaning = true;
-            squeegeeX = -300;
-            // Cleaning sound (Hiss/Wash)
-            const osc = audioCtx.createOscillator(); const g = audioCtx.createGain();
-            o = audioCtx.createOscillator(); o.type = 'brown'; // Not supported in all, use noise buffer
-            playCleanupSound();
+            squeegeeX = -400;
+            if(!isMuted) playCleanupSound();
         }
 
         function playCleanupSound() {
-            const bufferSize = audioCtx.sampleRate * 2;
-            const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+            const buffer = audioCtx.createBuffer(1, audioCtx.sampleRate * 2, audioCtx.sampleRate);
             const data = buffer.getChannelData(0);
-            for (let i = 0; i < bufferSize; i++) data[i] = Math.random() * 2 - 1;
+            for (let i = 0; i < data.length; i++) data[i] = Math.random() * 2 - 1;
             const noise = audioCtx.createBufferSource();
             noise.buffer = buffer;
-            const filter = audioCtx.createBiquadFilter(); filter.type = 'lowpass'; filter.frequency.value = 800;
-            const g = audioCtx.createGain(); g.gain.setValueAtTime(0.2, audioCtx.currentTime);
-            g.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 2);
-            noise.connect(filter); filter.connect(g); g.connect(audioCtx.destination);
+            const filter = audioCtx.createBiquadFilter(); filter.type = 'lowpass'; filter.frequency.value = 600;
+            const gain = audioCtx.createGain(); gain.gain.setValueAtTime(0.2, audioCtx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 1.8);
+            noise.connect(filter); filter.connect(gain); gain.connect(audioCtx.destination);
             noise.start();
         }
 
         function gameLoop() {
             fCtx.clearRect(0,0, fCanvas.width, fCanvas.height);
-
             if (isCleaning) {
-                squeegeeX += 20;
-                // Draw Squeegee
-                fCtx.fillStyle = "#444"; fCtx.fillRect(squeegeeX, 0, 150, fCanvas.height);
+                squeegeeX += 25;
+                fCtx.fillStyle = "#333"; fCtx.fillRect(squeegeeX, 0, 150, fCanvas.height);
                 fCtx.fillStyle = "#FFF"; fCtx.fillRect(squeegeeX + 140, 0, 10, fCanvas.height);
-                // Erase main canvas
                 mCtx.fillStyle = "black"; mCtx.fillRect(squeegeeX - 50, 0, 100, mCanvas.height);
-
-                if (squeegeeX > fCanvas.width + 300) {
+                if (squeegeeX > fCanvas.width + 400) {
                     isCleaning = false; splatCount = 0;
-                    hud.innerText = `Splats: 0/10`; gameState = "play";
+                    hitDisplay.innerText = "0"; gameState = "play";
                 }
             }
             requestAnimationFrame(gameLoop);
+        }
+
+        function resize() {
+            mCanvas.width = fCanvas.width = window.innerWidth;
+            mCanvas.height = fCanvas.height = window.innerHeight;
+            mCtx.fillStyle = "black"; mCtx.fillRect(0,0, mCanvas.width, mCanvas.height);
         }
         window.onresize = resize;
     </script>
