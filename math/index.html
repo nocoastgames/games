@@ -36,7 +36,6 @@
             border-radius: 20px; cursor: pointer; margin-top: 20px;
         }
 
-        /* MATH LAYOUT */
         .math-container { display: flex; gap: 40px; z-index: 10; width: 95%; justify-content: center; align-items: center; }
         
         .quantity-box {
@@ -44,6 +43,7 @@
             border-radius: 30px; background: #080808; position: relative;
             display: grid; grid-template-columns: repeat(3, 1fr);
             grid-template-rows: repeat(3, 1fr); padding: 20px; box-sizing: border-box;
+            transition: 0.3s;
         }
 
         .item { font-size: 60px; display: flex; justify-content: center; align-items: center; }
@@ -82,8 +82,8 @@
             
             <p>Difficulty:</p>
             <select id="diff-select" style="font-size:20px; padding:10px; width:100%;">
-                <option value="easy">Easy (Big Differences: 1 vs 6)</option>
-                <option value="hard">Hard (Close Numbers: 4 vs 5)</option>
+                <option value="easy">Easy (Big Differences)</option>
+                <option value="hard">Hard (Close Numbers)</option>
             </select>
 
             <button class="btn-ui" onclick="startEngine()">START MATH</button>
@@ -98,8 +98,8 @@
     </div>
 
     <div class="label-container">
-        <div id="label-0" class="math-label">LEFT</div>
-        <div id="label-1" class="math-label">RIGHT</div>
+        <div id="label-0" class="math-label">0</div>
+        <div id="label-1" class="math-label">0</div>
     </div>
 
     <canvas id="gameCanvas"></canvas>
@@ -118,7 +118,7 @@
         let scanTimer, activeIdx = 0, scanSpeed = 2500;
 
         let boxQuantities = [0, 0];
-        let currentGoal = 'more'; // 'more' or 'less'
+        let currentGoal = 'more'; 
         let currentEmoji = '⭐';
         const emojis = ['⭐', '💎', '🍬', '🎈', '🍎', '🟡', '🦋'];
 
@@ -150,20 +150,17 @@
             const diff = document.getElementById('diff-select').value;
             currentEmoji = emojis[Math.floor(Math.random() * emojis.length)];
             
-            // Generate numbers
             if (diff === 'easy') {
-                boxQuantities[0] = Math.floor(Math.random() * 3) + 1; // 1-3
-                boxQuantities[1] = Math.floor(Math.random() * 4) + 6; // 6-9
+                boxQuantities[0] = Math.floor(Math.random() * 3) + 1; 
+                boxQuantities[1] = Math.floor(Math.random() * 4) + 6; 
             } else {
-                let n = Math.floor(Math.random() * 5) + 3; // 3-7
+                let n = Math.floor(Math.random() * 5) + 3; 
                 boxQuantities[0] = n;
                 boxQuantities[1] = n + 1;
             }
 
-            // Shuffle boxes
             if (Math.random() > 0.5) boxQuantities.reverse();
 
-            // Set Goal
             currentGoal = Math.random() > 0.5 ? 'more' : 'less';
             qText.innerText = `Which has ${currentGoal}?`;
             speak(`Which box has ${currentGoal}?`);
@@ -174,7 +171,11 @@
         function renderBoxes() {
             for (let b = 0; b < 2; b++) {
                 const container = document.getElementById(`box-${b}`);
+                const label = document.getElementById(`label-${b}`);
                 container.innerHTML = '';
+                // Update numeric label below the box
+                label.innerText = boxQuantities[b];
+
                 for (let i = 0; i < boxQuantities[b]; i++) {
                     const item = document.createElement('div');
                     item.className = 'item';
@@ -191,15 +192,18 @@
                 activeIdx = (activeIdx + 1) % 2;
                 updateVisualSelection();
                 playSynth('tick', 0.1);
-                speak(activeIdx === 0 ? "Left box" : "Right box");
+                
+                // --- THE NEW SPEECH LOGIC: Say the Number ---
+                speak(boxQuantities[activeIdx].toString());
+
             }, scanSpeed);
         }
 
         function updateVisualSelection() {
             document.getElementById('label-0').classList.toggle('active', activeIdx === 0);
-            document.getElementById('box-0').style.borderColor = (activeIdx === 0) ? '#FF00FF' : '#333';
+            document.getElementById('box-0').classList.toggle('active', activeIdx === 0);
             document.getElementById('label-1').classList.toggle('active', activeIdx === 1);
-            document.getElementById('box-1').style.borderColor = (activeIdx === 1) ? '#FF00FF' : '#333';
+            document.getElementById('box-1').classList.toggle('active', activeIdx === 1);
         }
 
         function handleKeyDown(e) { if (!e.repeat && (e.code === "Space" || e.code === "Enter")) processInput(); }
@@ -221,7 +225,7 @@
         function success() {
             isWinner = true;
             playSynth('win', 0.5);
-            speak("Yes! That box has " + currentGoal);
+            speak("Yes! " + boxQuantities[activeIdx] + " is " + currentGoal);
             
             if (!lowSensoryMode) triggerMegaParty();
             setTimeout(nextRound, 4000);
@@ -230,8 +234,8 @@
         function fail() {
             inputBlocked = true;
             playSynth('fail', 0.3);
-            speak("Try again.");
-            const el = document.getElementById(`label-${activeIdx}`);
+            speak("No, that is " + boxQuantities[activeIdx]);
+            const el = document.getElementById(`box-${activeIdx}`);
             el.style.borderColor = "#FF0000";
             setTimeout(() => {
                 el.style.borderColor = "";
