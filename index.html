@@ -3,204 +3,145 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Student Interaction Hub</title>
+    <title>Interaction Hub - Learning Roadmap</title>
     <style>
-        body { 
-            background-color: #000; color: white; 
-            font-family: sans-serif; margin: 0; padding: 20px;
-            display: flex; flex-direction: column; align-items: center;
-            min-height: 100vh;
+        :root {
+            --p1: #00FFFF; --p2: #FF00FF; --p3: #FF4500; 
+            --p4: #FFD700; --p5: #00FF00; --p6: #FFFFFF; --p7: #CCFF00;
         }
+        body { background-color: #000; color: white; font-family: sans-serif; margin: 0; padding: 20px; display: flex; flex-direction: column; align-items: center; min-height: 100vh; }
         
-        h1 { 
-            color: #fff; 
-            font-size: clamp(28px, 6vw, 52px); 
-            text-align: center; 
-            margin-bottom: 5px;
-            text-shadow: 0 0 15px rgba(255,255,255,0.3);
-            letter-spacing: 2px;
-        }
+        h1 { color: #fff; font-size: clamp(28px, 5vw, 48px); text-align: center; margin-bottom: 5px; }
+        .subtitle { color: #888; margin-bottom: 30px; font-size: 18px; text-align: center; }
 
-        .subtitle {
-            color: #888;
-            margin-bottom: 30px;
-            font-size: 20px;
-            text-align: center;
-            font-weight: 300;
-        }
+        /* SENSORY TOGGLE */
+        .sensory-controls { background: #111; padding: 15px 25px; border-radius: 25px; margin-bottom: 40px; border: 2px solid #444; display: flex; align-items: center; gap: 20px; }
+        .toggle-btn { padding: 12px 24px; border-radius: 15px; border: none; cursor: pointer; font-weight: bold; font-size: 16px; transition: 0.3s; }
+        .on { background: #ff4444; color: white; }
+        .off { background: #44ff44; color: black; }
 
-        /* SENSORY TOGGLE STYLING */
-        .sensory-controls {
-            background: #111; 
-            padding: 15px 25px; 
-            border-radius: 25px; 
-            margin-bottom: 40px;
-            border: 2px solid #444; 
-            display: flex; 
-            align-items: center; 
-            gap: 20px;
-            box-shadow: 0 5px 15px rgba(0,0,0,0.5);
-        }
-        .sensory-label { font-weight: bold; color: #bbb; text-transform: uppercase; font-size: 14px; }
-        .toggle-btn {
-            padding: 12px 24px; border-radius: 15px; border: none; cursor: pointer;
-            font-weight: bold; font-size: 16px; transition: 0.3s;
-        }
-        .on { background: #ff4444; color: white; box-shadow: 0 0 15px #ff4444; }
-        .off { background: #44ff44; color: black; box-shadow: 0 0 15px #44ff44; }
-        
-        /* THE GRID CONTAINER */
-        .game-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-            gap: 25px; 
-            width: 100%; 
-            max-width: 1300px; 
-            flex-grow: 1;
-            align-content: start;
-        }
+        /* PHASE SECTIONS */
+        .phase-section { width: 100%; max-width: 1200px; margin-bottom: 50px; border-left: 6px solid #333; padding-left: 20px; }
+        .phase-header { margin-bottom: 20px; }
+        .phase-title { font-size: 24px; font-weight: bold; text-transform: uppercase; letter-spacing: 2px; }
+        .phase-desc { color: #888; font-size: 16px; margin-top: 5px; }
 
-        /* THE GAME CARD BASE */
-        .game-card {
-            background: #111; 
-            border-radius: 35px;
-            padding: 35px 20px; 
-            text-align: center; 
-            text-decoration: none;
-            transition: transform 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275), background 0.3s;
-            border: 5px solid transparent;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            box-shadow: 0 10px 25px rgba(0,0,0,0.6);
-        }
+        .game-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 20px; }
 
-        .game-card:hover { 
-            transform: scale(1.03); 
-            background: #1a1a1a;
-        }
-        
-        .game-icon { font-size: 80px; margin-bottom: 15px; display: block; }
-        .game-title { font-size: 28px; font-weight: bold; display: block; letter-spacing: 1px; }
-        .game-desc { color: #777; margin-top: 12px; font-size: 15px; line-height: 1.4; }
+        /* CARDS */
+        .game-card { background: #111; border-radius: 25px; padding: 25px; text-align: center; text-decoration: none; transition: 0.2s; border: 4px solid #222; display: flex; flex-direction: column; align-items: center; }
+        .game-card:hover { transform: scale(1.03); background: #1a1a1a; }
+        .game-icon { font-size: 60px; margin-bottom: 10px; }
+        .game-name { font-size: 20px; font-weight: bold; color: #fff; }
 
-        /* INDIVIDUAL NEON THEMES */
-        .dj { border-color: #00FFFF; color: #00FFFF; }
-        .bubbles { border-color: #FF00FF; color: #FF00FF; }
-        .snake { border-color: #00FF00; color: #00FF00; }
-        .loghop { border-color: #FF8C00; color: #FF8C00; }
-        .racer { border-color: #FFD700; color: #FFD700; }
-        .rocket { border-color: #FF4500; color: #FF4500; }
-        .canvas { border-color: #FFFFFF; color: #FFFFFF; }
-        .monster { border-color: #CCFF00; color: #CCFF00; } /* Neon Lime Theme */
+        /* PHASE COLORS */
+        .ph1 { border-color: var(--p1); color: var(--p1); }
+        .ph2 { border-color: var(--p2); color: var(--p2); }
+        .ph3 { border-color: var(--p3); color: var(--p3); }
+        .ph4 { border-color: var(--p4); color: var(--p4); }
+        .ph5 { border-color: var(--p5); color: var(--p5); }
+        .ph6 { border-color: var(--p6); color: var(--p6); }
 
-        /* Teacher / Donation Section */
-        footer {
-            margin-top: 60px; padding: 40px 20px; text-align: center;
-            border-top: 1px solid #222; width: 100%; max-width: 900px;
-        }
-        .kofi-button {
-            background-color: #29abe0; color: white; padding: 18px 35px;
-            text-decoration: none; border-radius: 20px; font-weight: bold;
-            display: inline-block; margin-top: 20px; font-size: 18px;
-        }
-        .license-text { font-size: 13px; color: #444; margin-top: 25px; }
+        footer { margin-top: 60px; padding: 40px 20px; text-align: center; border-top: 1px solid #222; width: 100%; max-width: 900px; }
+        .kofi-button { background-color: #29abe0; color: white; padding: 15px 30px; text-decoration: none; border-radius: 20px; font-weight: bold; display: inline-block; }
     </style>
 </head>
 <body>
 
-    <h1>Student Interaction Hub</h1>
-    <p class="subtitle">Cause-and-Effect Experiences</p>
+    <h1>Interaction Hub</h1>
+    <p class="subtitle">A Step-by-Step Learning Roadmap for One-Button Users</p>
 
-    <!-- SENSORY TOGGLE -->
     <div class="sensory-controls">
-        <span class="sensory-label">Visual Stimulation:</span>
+        <span style="font-weight:bold; color:#bbb;">Visual Stimulation:</span>
         <button id="sensoryToggle" class="toggle-btn off" onclick="toggleSensory()">HIGH (Standard)</button>
     </div>
 
-    <div class="game-grid">
-        <!-- DJ PARTY -->
-        <a href="dj-party/index.html" class="game-card dj">
-            <span class="game-icon">🎧</span>
-            <span class="game-title">DJ PARTY</span>
-            <p class="game-desc">High energy techno and neon strobe flashes.</p>
-        </a>
+    <!-- PHASE 1 -->
+    <div class="phase-section" style="border-color: var(--p1);">
+        <div class="phase-header">
+            <div class="phase-title" style="color: var(--p1);">Phase 1: Sensory Agency</div>
+            <div class="phase-desc">Goal: Understand "I press, and something happens." Pure cause and effect.</div>
+        </div>
+        <div class="game-grid">
+            <a href="dj-party/index.html" class="game-card ph1"><span class="game-icon">🎧</span><span class="game-name">DJ Party</span></a>
+            <a href="bubbles/index.html" class="game-card ph1"><span class="game-icon">🫧</span><span class="game-name">Bubble Pop</span></a>
+            <a href="canvas/index.html" class="game-card ph1"><span class="game-icon">🎨</span><span class="game-name">Neon Canvas</span></a>
+        </div>
+    </div>
 
-        <!-- BUBBLE POP -->
-        <a href="bubbles/index.html" class="game-card bubbles">
-            <span class="game-icon">🫧</span>
-            <span class="game-title">BUBBLE POP</span>
-            <p class="game-desc">Calm music & magical popping bubble visuals.</p>
-        </a>
+    <!-- PHASE 2 -->
+    <div class="phase-section" style="border-color: var(--p2);">
+        <div class="phase-header">
+            <div class="phase-title" style="color: var(--p2);">Phase 2: Sustained Action</div>
+            <div class="phase-desc">Goal: Repeated pressing moves an object through space.</div>
+        </div>
+        <div class="game-grid">
+            <a href="snake/index.html" class="game-card ph2"><span class="game-icon">🐍</span><span class="game-name">Mega Snake</span></a>
+            <a href="racer/index.html" class="game-card ph2"><span class="game-icon">🏎️</span><span class="game-name">Neon Racer</span></a>
+        </div>
+    </div>
 
-        <!-- MEGA SNAKE -->
-        <a href="snake/index.html" class="game-card snake">
-            <span class="game-icon">🐍</span>
-            <span class="game-title">MEGA SNAKE</span>
-            <p class="game-desc">Lunge toward the goal. Collect 10 apples to win!</p>
-        </a>
+    <!-- PHASE 3 -->
+    <div class="phase-section" style="border-color: var(--p3);">
+        <div class="phase-header">
+            <div class="phase-title" style="color: var(--p3);">Phase 3: Building & Persistence</div>
+            <div class="phase-desc">Goal: Multi-step process with a delayed high-value reward.</div>
+        </div>
+        <div class="game-grid">
+            <a href="rocket/index.html" class="game-card ph3"><span class="game-icon">🚀</span><span class="game-name">Mega Rocket</span></a>
+            <a href="monster/index.html" class="game-card ph3"><span class="game-icon">👾</span><span class="game-name">Monster Feed</span></a>
+        </div>
+    </div>
 
-        <!-- MEGA LOG HOP -->
-        <a href="log-hop/index.html" class="game-card loghop">
-            <span class="game-icon">🪵</span>
-            <span class="game-title">MEGA LOG HOP</span>
-            <p class="game-desc">Jump across logs and sandbars to reach the party.</p>
-        </a>
+    <!-- PHASE 4 -->
+    <div class="phase-section" style="border-color: var(--p4);">
+        <div class="phase-header">
+            <div class="phase-title" style="color: var(--p4);">Phase 4: Action on Cue (Timing)</div>
+            <div class="phase-desc">Goal: Press only when the world is ready. Teaches waiting.</div>
+        </div>
+        <div class="game-grid">
+            <a href="log-hop/index.html" class="game-card ph4"><span class="game-icon">🪵</span><span class="game-name">Mega Log Hop</span></a>
+        </div>
+    </div>
 
-        <!-- NEON RACER -->
-        <a href="racer/index.html" class="game-card racer">
-            <span class="game-icon">🏎️</span>
-            <span class="game-title">NEON RACER</span>
-            <p class="game-desc">Pump for speed! Complete 5 laps for a trophy.</p>
-        </a>
+    <!-- PHASE 5 -->
+    <div class="phase-section" style="border-color: var(--p5);">
+        <div class="phase-header">
+            <div class="phase-title" style="color: var(--p5);">Phase 5: Choice Making (Scanning)</div>
+            <div class="phase-desc">Goal: Select the correct item from a moving highlight. AAC Ready.</div>
+        </div>
+        <div class="game-grid">
+            <a href="match/index.html" class="game-card ph5"><span class="game-icon">🎯</span><span class="game-name">Target Match</span></a>
+        </div>
+    </div>
 
-        <!-- MEGA ROCKET -->
-        <a href="rocket/index.html" class="game-card rocket">
-            <span class="game-icon">🚀</span>
-            <span class="game-title">MEGA ROCKET</span>
-            <p class="game-desc">Build, fuel, and launch the rocket into space.</p>
-        </a>
-
-        <!-- NEON CANVAS -->
-        <a href="canvas/index.html" class="game-card canvas">
-            <span class="game-icon">🎨</span>
-            <span class="game-title">NEON CANVAS</span>
-            <p class="game-desc">Splash neon paint to create your own masterpiece.</p>
-        </a>
-
-        <!-- FEED THE MONSTER (NEW) -->
-        <a href="monster/index.html" class="game-card monster">
-            <span class="game-icon">👾</span>
-            <span class="game-title">MONSTER FEED</span>
-            <p class="game-desc">Launch snacks into the monster's mouth for a surprise.</p>
-        </a>
+    <!-- PHASE 6 -->
+    <div class="phase-section" style="border-color: var(--p6);">
+        <div class="phase-header">
+            <div class="phase-title" style="color: var(--p6);">Phase 6: Categorization</div>
+            <div class="phase-desc">Goal: Making logical decisions (e.g., Sorting Food vs. Not Food).</div>
+        </div>
+        <div class="game-grid">
+            <div class="game-card" style="opacity: 0.3;"><span class="game-icon">📦</span><span class="game-name">Coming Soon</span></div>
+        </div>
     </div>
 
     <footer>
         <a href="https://ko-fi.com/nocoast" target="_blank" class="kofi-button">☕ Support this project on Ko-fi</a>
-        <div class="license-text">Released under the MIT License. Free for schools and parents.</div>
     </footer>
 
     <script>
         function updateButton() {
             const isLow = localStorage.getItem('lowSensory') === 'true';
             const btn = document.getElementById('sensoryToggle');
-            if (isLow) {
-                btn.innerText = "LOW (Safe Mode)";
-                btn.className = "toggle-btn on";
-            } else {
-                btn.innerText = "HIGH (Standard)";
-                btn.className = "toggle-btn off";
-            }
+            if (isLow) { btn.innerText = "LOW (Safe Mode)"; btn.className = "toggle-btn on"; }
+            else { btn.innerText = "HIGH (Standard)"; btn.className = "toggle-btn off"; }
         }
-
         function toggleSensory() {
             const isLow = localStorage.getItem('lowSensory') === 'true';
             localStorage.setItem('lowSensory', !isLow);
             updateButton();
-            // Optional: Refresh page to apply instantly if a game is open in a tab
         }
-
         updateButton();
     </script>
 </body>
