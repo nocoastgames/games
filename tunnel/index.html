@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>STAR TUNNEL - SUSTAINED ACTION</title>
+    <style>
+        body { 
+            background-color: #000; margin: 0; overflow: hidden; 
+            display: flex; justify-content: center; align-items: center; 
+            height: 100vh; font-family: sans-serif;
+            user-select: none; touch-action: manipulation;
+        }
+
+        #home-button {
+            position: fixed; top: 15px; left: 15px; z-index: 1000;
+            color: white; text-decoration: none; font-size: 24px;
+            background: rgba(255, 255, 255, 0.1); padding: 10px; 
+            border-radius: 10px; opacity: 0.3; transition: opacity 0.3s;
+        }
+        #home-button:hover { opacity: 1.0; background: rgba(255, 255, 255, 0.3); }
+
+        #overlay, #win-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: #000; display: flex; 
+            flex-direction: column; justify-content: center; align-items: center; 
+            z-index: 100; cursor: pointer; text-align: center;
+        }
+        #win-overlay { background: rgba(0,0,0,0.9); display: none; z-index: 200; pointer-events: none; }
+
+        .btn-ui {
+            font-size: 50px; padding: 30px 60px; border: 8px solid #00FFFF;
+            background: transparent; color: #00FFFF; font-weight: bold;
+            border-radius: 20px; box-shadow: 0 0 30px #00FFFF;
+        }
+
+        canvas { display: block; z-index: 10; }
+        #flash { position: fixed; top:0; left:0; width:100%; height:100%; opacity: 0; z-index: 150; pointer-events: none; }
+        #hud { position: absolute; top: 20px; right: 20px; color: #00FFFF; font-size: 30px; font-weight: bold; z-index: 50; }
+        h1 { color: #00FFFF; position: absolute; bottom: 20px; letter-spacing: 10px; opacity: 0.3; pointer-events: none; }
+    </style>
+</head>
+<body onkeydown="handleKeyDown(event)" onkeyup="handleKeyUp(event)" onmousedown="handleMouseDown(event)" onmouseup="handleMouseUp(event)">
+
+    <a id="home-button" href="../index.html">🏠</a>
+    <div id="flash"></div>
+
+    <div id="overlay" onclick="startEngine()">
+        <div class="btn-ui">ENGINE START</div>
+        <p style="margin-top: 20px; color: white; font-size: 24px;">(Tap to Boost through Space!)</p>
+    </div>
+
+    <div id="win-overlay">
+        <h2 style="color: #00FFFF; font-size: 80px; margin: 0;">WARP REACHED!</h2>
+        <p style="color: white; font-size: 30px;">DISTANCE MILESTONE COMPLETE!</p>
+    </div>
+
+    <div id="hud">Distance: 0</div>
+    <canvas id="gameCanvas"></canvas>
+    <h1>STAR TUNNEL</h1>
+
+    <audio id="bg-music" loop preload="auto">
+        <source src="https://www.soundhelix.com/examples/mp3/SoundHelix-Song-12.mp3" type="audio/mpeg">
+    </audio>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const flash = document.getElementById('flash');
+        const hud = document.getElementById('hud');
+        const winOverlay = document.getElementById('win-overlay');
+        const bgMusic = document.getElementById('bg-music');
+        
+        const lowSensoryMode = localStorage.getItem('lowSensory') === 'true';
+
+        let audioCtx, isStarted = false, gameState = "play";
+        let lastPressTime = 0, cooldown = 100;
+        let switchIsDown = false;
+
+        // Tunnel Logic
+        let speed = 2;
+        let targetSpeed = 2;
+        let distance = 0;
+        let lines = [];
+        let tunnelHue = 180; // Cyan
+
+        function startEngine() {
+            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+            bgMusic.volume = 0.2;
+            bgMusic.play();
+            document.getElementById('overlay').style.display = 'none';
+            isStarted = true;
+            
+            // Create initial tunnel rings
+            for(let i=0; i<15; i++) {
+                lines.push({ z: i * 100 });
+            }
+
+            requestAnimationFrame(gameLoop);
+        }
+
+        // --- INPUT HANDLING (ANTI-SPAM) ---
+        function handleKeyDown(e) { if (!e.repeat && (e.code === "Space" || e.code === "Enter")) processBoost(); }
+        function handleKeyUp(e) { if (e.code === "Space" || e.code === "Enter") switchIsDown = false; }
+        function handleMouseDown(e) { if (e.target.id === 'home-button') return; processBoost(); }
+        function handleMouseUp() { switchIsDown = false; }
+
+        function processBoost() {
+            if (!isStarted || gameState !== "play" || switchIsDown) return;
+            switchIsDown = true;
+
+            // Increase speed significantly on click
+            targetSpeed += 15;
+            if (targetSpeed > 60) targetSpeed = 60; // Max speed cap
+            
+            playBoostSound();
+            
+            if (!lowSensoryMode) {
+                flash.style.backgroundColor = `hsla(${tunnelHue}, 100%, 50%, 0.3)`;
+                flash.style.opacity = 1;
+                setTimeout(() => flash.style.opacity = 0, 80);
+            }
+            if (navigator.vibrate) navigator.vibrate(60);
+        }
+
+        function playBoostSound() {
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.connect(gain); gain.connect(audioCtx.destination);
+            const now = audioCtx.currentTime;
+            
+            osc.type = 'sawtooth';
+            osc.frequency.setValueAtTime(50 + (speed * 10), now);
+            osc.frequency.exponentialRampToValueAtTime(200 + (speed * 20), now + 0.2);
+            
+            gain.gain.setValueAtTime(0.3, now);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + 0.3);
+            osc.start(); osc.stop(now + 0.3);
+        }
+
+        function gameLoop() {
+            ctx.fillStyle = 'black';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            if (gameState === "play") {
+                // Physics: Smoothly approach targetSpeed then decay
+                speed += (targetSpeed - speed) * 0.1;
+                targetSpeed *= 0.98; // Speed decays over time
+                if (targetSpeed < 2) targetSpeed = 2;
+
+                distance += Math.floor(speed);
+                hud.innerText = `Distance: ${distance}`;
+
+                // Milestone Celebration
+                if (distance > 0 && distance % 5000 < speed) {
+                    triggerMilestone();
+                }
+            }
+
+            drawTunnel();
+            requestAnimationFrame(gameLoop);
+        }
+
+        function triggerMilestone() {
+            tunnelHue = (tunnelHue + 60) % 360;
+            if (!lowSensoryMode) {
+                flash.style.backgroundColor = "white";
+                flash.style.opacity = 0.5;
+                setTimeout(() => flash.style.opacity = 0, 300);
+            }
+        }
+
+        function drawTunnel() {
+            const cx = canvas.width / 2;
+            const cy = canvas.height / 2;
+
+            lines.forEach(line => {
+                line.z -= speed;
+                if (line.z <= 0) line.z = 1500;
+
+                // 3D Projection
+                const perspective = 400 / (400 + line.z);
+                const size = 2000 * perspective;
+                
+                ctx.strokeStyle = `hsl(${tunnelHue}, 100%, 50%)`;
+                ctx.lineWidth = 10 * perspective;
+                ctx.globalAlpha = 1 - (line.z / 1500);
+
+                // Draw Square Ring
+                ctx.strokeRect(cx - size/2, cy - size/2, size, size);
+
+                // Draw Connecting corner lines to create depth
+                ctx.beginPath();
+                ctx.moveTo(cx - size/2, cy - size/2);
+                ctx.lineTo(cx, cy);
+                ctx.stroke();
+
+                ctx.beginPath();
+                ctx.moveTo(cx + size/2, cy - size/2);
+                ctx.lineTo(cx, cy);
+                ctx.stroke();
+            });
+            ctx.globalAlpha = 1;
+        }
+
+        window.onresize = () => {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        };
+    </script>
+</body>
+</html>
