@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>DJ PARTY - NEON STAGE</title>
+    <title>DJ PARTY - PRO</title>
     <style>
         body { 
             background-color: #000; margin: 0; overflow: hidden; 
@@ -12,57 +12,70 @@
             user-select: none; touch-action: manipulation;
         }
 
+        /* UNOBTRUSIVE HOME */
         #home-button {
             position: fixed; top: 15px; left: 15px; z-index: 1000;
             color: white; text-decoration: none; font-size: 24px;
             background: rgba(255, 255, 255, 0.1); padding: 10px; 
-            border-radius: 10px; opacity: 0.3; transition: opacity 0.3s;
+            border-radius: 12px; opacity: 0.3; transition: 0.3s;
+            border: 1px solid rgba(255,255,255,0.2);
         }
-        #home-button:hover { opacity: 1.0; background: rgba(255, 255, 255, 0.3); }
+        #home-button:hover { opacity: 1.0; background: rgba(255, 255, 255, 0.2); }
 
+        /* PRO START BUTTON */
         #overlay {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: #000; color: #00FF00; display: flex; 
+            background: #000; display: flex; 
             flex-direction: column; justify-content: center; align-items: center; 
-            z-index: 100; cursor: pointer; text-align: center;
+            z-index: 500;
         }
-        .btn-ui {
-            font-size: 50px; padding: 30px 60px; border: 8px solid #00FF00;
-            background: transparent; color: #00FF00; font-weight: bold;
-            border-radius: 20px; box-shadow: 0 0 30px #00FF00;
+        .btn-start {
+            font-size: 40px; padding: 25px 50px; border: 4px solid #00FFFF;
+            background: transparent; color: #00FFFF; font-weight: bold;
+            border-radius: 20px; cursor: pointer; box-shadow: 0 0 20px rgba(0,255,255,0.3);
+            transition: 0.2s;
         }
+        .btn-start:hover { background: #00FFFF; color: #000; }
 
+        /* STAGE ELEMENTS */
         .speaker {
-            position: absolute; bottom: 10%; width: 15vw; height: 40vh;
-            background: #111; border: 5px solid #333; border-radius: 20px;
+            position: absolute; bottom: 10%; width: 15vw; height: 45vh;
+            background: #0a0a0a; border: 4px solid #222; border-radius: 20px;
             display: flex; flex-direction: column; align-items: center; justify-content: space-around;
-            padding: 10px;
+            padding: 10px; box-shadow: 0 0 20px rgba(0,0,0,1);
         }
         .speaker-left { left: 5%; }
         .speaker-right { right: 5%; }
         .cone {
             width: 80%; padding-top: 80%; border-radius: 50%;
-            background: radial-gradient(circle, #222 30%, #000 70%);
-            border: 4px solid #444; transition: transform 0.1s;
+            background: radial-gradient(circle, #111 30%, #000 70%);
+            border: 3px solid #333; transition: transform 0.1s;
         }
 
         #dj-booth {
-            font-size: 220px; z-index: 50; transition: transform 0.1s;
+            font-size: 200px; z-index: 50; transition: transform 0.1s;
+            filter: drop-shadow(0 0 20px rgba(0,255,255,0.3));
         }
 
         canvas { position: absolute; top: 0; left: 0; pointer-events: none; z-index: 5; }
         #flash { position: fixed; top:0; left:0; width:100%; height:100%; opacity: 0; z-index: 150; pointer-events: none; }
-        #hud { position: absolute; top: 20px; right: 20px; color: #00FF00; font-size: 30px; font-weight: bold; }
+        
+        #hud { position: absolute; top: 20px; right: 20px; color: #00FFFF; font-size: 24px; font-weight: bold; opacity: 0.5; z-index: 50; text-align: right;}
     </style>
 </head>
-<body onkeydown="handleInput(event)" onmousedown="handleInput(event)">
+<body onmousedown="handleInput(event)" onkeydown="handleInput(event)">
 
     <a id="home-button" href="../index.html">🏠</a>
     <div id="flash"></div>
 
-    <div id="overlay" onclick="startEngine()">
-        <div class="btn-ui">START THE PARTY</div>
-        <p style="margin-top: 20px; color: white; font-size: 24px;">(Click for different sounds!)</p>
+    <div id="overlay">
+        <button class="btn-start" onclick="startEngine(event)">START DJ</button>
+        <p style="color: #666; margin-top: 20px; letter-spacing: 1px;">PHASE 1: RHYTHMIC AGENCY</p>
+    </div>
+
+    <div id="hud">
+        MODE: <span id="bank-name">TECHNO</span><br>
+        HITS: <span id="hit-count">0</span>
     </div>
 
     <div class="speaker speaker-left">
@@ -74,7 +87,6 @@
         <div class="cone" id="cone-r2"></div>
     </div>
 
-    <div id="hud">Mode: TECHNO</div>
     <div id="dj-booth">🎧</div>
 
     <canvas id="stageLights"></canvas>
@@ -89,55 +101,72 @@
         const bgMusic = document.getElementById('bg-music');
         const booth = document.getElementById('dj-booth');
         const flash = document.getElementById('flash');
+        const hitDisplay = document.getElementById('hit-count');
+        const bankDisplay = document.getElementById('bank-name');
         
+        // --- PRO HUB SETTINGS ---
         const lowSensoryMode = localStorage.getItem('lowSensory') === 'true';
         const isMuted = localStorage.getItem('muteMusic') === 'true';
 
         let audioCtx, isStarted = false;
-        let pressCount = 0;
+        let sessionHits = 0;
         let currentBank = 0; 
         const bankNames = ["TECHNO", "FUNNY", "DRUMS"];
         const bankEmojis = ["🎧", "🤪", "🥁"];
 
-        function startEngine() {
-            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        function startEngine(e) {
+            if(e) e.stopPropagation();
+            try {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                if (!isMuted) {
+                    bgMusic.volume = 0.15;
+                    bgMusic.play().catch(err => console.log("Audio block"));
+                }
+            } catch (err) {}
+
             canvas.width = window.innerWidth;
             canvas.height = window.innerHeight;
-            bgMusic.volume = isMuted ? 0 : 0.15;
-            bgMusic.play();
             document.getElementById('overlay').style.display = 'none';
             isStarted = true;
             requestAnimationFrame(gameLoop);
         }
 
         function handleInput(event) {
-            if (event.target.id === 'home-button' || !isStarted) return;
+            if (!isStarted) return;
+            if (event.target.id === 'home-button' || event.target.className === 'btn-start') return;
             if (event.type === 'keydown' && event.code !== "Space" && event.code !== "Enter") return;
+
+            // --- DATA COLLECTION ---
+            sessionHits++;
+            hitDisplay.innerText = sessionHits;
+            let totalS = parseInt(localStorage.getItem('statSuccess') || 0);
+            localStorage.setItem('statSuccess', totalS + 1);
 
             triggerDJEffect();
         }
 
         function triggerDJEffect() {
-            pressCount++;
-            
             // Switch Banks every 10 presses
-            if (pressCount % 10 === 0) {
+            if (sessionHits % 10 === 0 && sessionHits > 0) {
                 currentBank = (currentBank + 1) % 3;
-                document.getElementById('hud').innerText = `Mode: ${bankNames[currentBank]}`;
+                bankDisplay.innerText = bankNames[currentBank];
                 booth.innerText = bankEmojis[currentBank];
             }
 
             playBankSound();
 
+            // Animate DJ
             const spin = (Math.random() - 0.5) * 60;
-            booth.style.transform = `scale(1.6) rotate(${spin}deg)`;
+            booth.style.transform = `scale(1.5) rotate(${spin}deg)`;
             setTimeout(() => booth.style.transform = `scale(1) rotate(0deg)`, 100);
 
+            // Pulse Speakers
             document.querySelectorAll('.cone').forEach(c => {
-                c.style.transform = "scale(1.25)";
+                c.style.transform = "scale(1.2)";
                 setTimeout(() => c.style.transform = "scale(1)", 100);
             });
 
+            // Visual Strobe
             if (!lowSensoryMode) {
                 flash.style.backgroundColor = `hsl(${Math.random()*360}, 100%, 50%)`;
                 flash.style.opacity = 0.3;
@@ -147,35 +176,35 @@
         }
 
         function playBankSound() {
+            if(!audioCtx) return;
             const now = audioCtx.currentTime;
             const osc = audioCtx.createOscillator();
             const gain = audioCtx.createGain();
             osc.connect(gain); gain.connect(audioCtx.destination);
 
-            if (currentBank === 0) { // TECHNO (Siren Sweep)
+            if (currentBank === 0) { // TECHNO
                 osc.type = 'sawtooth';
                 osc.frequency.setValueAtTime(600, now);
                 osc.frequency.exponentialRampToValueAtTime(100, now + 0.2);
                 gain.gain.setValueAtTime(0.2, now);
                 gain.gain.exponentialRampToValueAtTime(0.01, now + 0.2);
             } 
-            else if (currentBank === 1) { // FUNNY (Fixed: Boing/Slide Whistle)
+            else if (currentBank === 1) { // FUNNY
                 osc.type = 'triangle';
-                const startFreq = 150 + Math.random() * 300;
+                const startFreq = 200 + Math.random() * 400;
                 osc.frequency.setValueAtTime(startFreq, now);
-                osc.frequency.linearRampToValueAtTime(startFreq * 3, now + 0.15); // Slide up
-                osc.frequency.linearRampToValueAtTime(startFreq, now + 0.3);      // Slide down
+                osc.frequency.linearRampToValueAtTime(startFreq * 2.5, now + 0.1);
+                osc.frequency.linearRampToValueAtTime(startFreq, now + 0.25);
                 gain.gain.setValueAtTime(0.3, now);
-                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.3);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.25);
             }
-            else { // DRUMS (Kick Drum)
+            else { // DRUMS
                 osc.type = 'sine';
                 osc.frequency.setValueAtTime(150, now);
                 osc.frequency.exponentialRampToValueAtTime(0.01, now + 0.15);
                 gain.gain.setValueAtTime(0.6, now);
                 gain.gain.exponentialRampToValueAtTime(0.01, now + 0.15);
             }
-
             osc.start(); osc.stop(now + 0.4);
         }
 
@@ -183,8 +212,8 @@
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             if (!lowSensoryMode) {
                 const time = Date.now() * 0.001;
-                drawLight(canvas.width * 0.2, 0, time);
-                drawLight(canvas.width * 0.8, 0, time * 1.2);
+                drawLight(canvas.width * 0.15, 0, time);
+                drawLight(canvas.width * 0.85, 0, time * 1.3);
             }
             requestAnimationFrame(gameLoop);
         }
@@ -195,10 +224,10 @@
             ctx.translate(x, y);
             ctx.rotate(angle);
             const grd = ctx.createLinearGradient(0, 0, 0, canvas.height);
-            grd.addColorStop(0, "rgba(255, 255, 255, 0.2)");
+            grd.addColorStop(0, "rgba(0, 255, 255, 0.2)");
             grd.addColorStop(1, "transparent");
             ctx.fillStyle = grd;
-            ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(-180, canvas.height); ctx.lineTo(180, canvas.height); ctx.closePath(); ctx.fill();
+            ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(-200, canvas.height); ctx.lineTo(200, canvas.height); ctx.closePath(); ctx.fill();
             ctx.restore();
         }
 
