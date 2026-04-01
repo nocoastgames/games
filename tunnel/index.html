@@ -3,38 +3,44 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>STAR TUNNEL - WARP SPEED</title>
+    <title>STAR TUNNEL - PRO</title>
     <style>
         body { 
             background-color: #000; margin: 0; overflow: hidden; 
-            display: flex; justify-content: center; align-items: center; 
-            height: 100vh; font-family: sans-serif;
+            display: flex; flex-direction: column; justify-content: center; 
+            align-items: center; height: 100vh; font-family: sans-serif;
             user-select: none; touch-action: manipulation;
         }
 
+        /* UNOBTRUSIVE HOME */
         #home-button {
             position: fixed; top: 15px; left: 15px; z-index: 1000;
             color: white; text-decoration: none; font-size: 24px;
             background: rgba(255, 255, 255, 0.1); padding: 10px; 
-            border-radius: 10px; opacity: 0.3; transition: opacity 0.3s;
+            border-radius: 12px; opacity: 0.3; transition: 0.3s;
+            border: 1px solid rgba(255,255,255,0.2);
         }
-        #home-button:hover { opacity: 1.0; background: rgba(255, 255, 255, 0.3); }
+        #home-button:hover { opacity: 1.0; background: rgba(255, 255, 255, 0.2); }
 
+        /* PRO START BUTTON */
         #overlay {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: #000; color: #00FFFF; display: flex; 
+            background: #000; display: flex; 
             flex-direction: column; justify-content: center; align-items: center; 
-            z-index: 100; cursor: pointer; text-align: center;
+            z-index: 500;
         }
-        .btn-ui {
-            font-size: 50px; padding: 30px 60px; border: 8px solid #00FFFF;
+        .btn-start {
+            font-size: 40px; padding: 25px 50px; border: 4px solid #00FFFF;
             background: transparent; color: #00FFFF; font-weight: bold;
-            border-radius: 20px; box-shadow: 0 0 30px #00FFFF;
+            border-radius: 20px; cursor: pointer; box-shadow: 0 0 20px rgba(0,255,255,0.3);
+            transition: 0.2s;
         }
+        .btn-start:hover { background: #00FFFF; color: #000; }
 
         canvas { display: block; position: absolute; top: 0; left: 0; }
         #flash { position: fixed; top:0; left:0; width:100%; height:100%; opacity: 0; z-index: 150; pointer-events: none; }
-        h1 { color: #00FFFF; position: absolute; bottom: 20px; letter-spacing: 10px; opacity: 0.2; pointer-events: none; z-index: 50; }
+        
+        #hud { position: absolute; top: 20px; right: 20px; color: #00FFFF; font-size: 22px; font-weight: bold; opacity: 0.6; z-index: 50; text-align: right; line-height: 1.4; }
     </style>
 </head>
 <body onkeydown="handleKeyDown(event)" onkeyup="handleKeyUp(event)" onmousedown="handleMouseDown(event)" onmouseup="handleMouseUp(event)">
@@ -42,13 +48,17 @@
     <a id="home-button" href="../index.html">🏠</a>
     <div id="flash"></div>
 
-    <div id="overlay" onclick="startEngine()">
-        <div class="btn-ui">ENGINE START</div>
-        <p style="margin-top: 20px; color: white; font-size: 24px;">(Tap to Engage Warp Drive!)</p>
+    <div id="overlay">
+        <button class="btn-start" onclick="startEngine(event)">ENGAGE WARP</button>
+        <p style="color: #666; margin-top: 20px; letter-spacing: 1px;">PHASE 2: SUSTAINED ACTION</p>
     </div>
 
+    <div id="hud">
+        WARP DISTANCE: <span id="dist-count">0</span><br>
+        BOOSTS: <span id="hit-count">0</span>
+    </div>
+    
     <canvas id="gameCanvas"></canvas>
-    <h1>WARP DRIVE</h1>
 
     <audio id="bg-music" loop preload="auto">
         <source src="https://www.soundhelix.com/examples/mp3/SoundHelix-Song-12.mp3" type="audio/mpeg">
@@ -59,108 +69,126 @@
         const ctx = canvas.getContext('2d');
         const flash = document.getElementById('flash');
         const bgMusic = document.getElementById('bg-music');
+        const hitDisplay = document.getElementById('hit-count');
+        const distDisplay = document.getElementById('dist-count');
         
+        // --- PRO HUB SETTINGS ---
         const lowSensoryMode = localStorage.getItem('lowSensory') === 'true';
         const isMuted = localStorage.getItem('muteMusic') === 'true';
 
         let audioCtx, isStarted = false;
+        let lastPressTime = 0, cooldown = 100;
         let switchIsDown = false;
+        let sessionHits = 0;
+        let distance = 0;
 
-        let speed = 2;
-        let targetSpeed = 2;
+        // Space Physics
+        let speed = 4;
+        let targetSpeed = 4;
         let tunnelRings = [];
         let stars = [];
         let tunnelHue = 180; 
         let shake = 0;
 
-        function startEngine() {
-            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-            canvas.width = window.innerWidth;
-            canvas.height = window.innerHeight;
-            
-            bgMusic.volume = isMuted ? 0 : 0.2;
-            bgMusic.play();
+        function startEngine(e) {
+            if(e) e.stopPropagation();
+            try {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                if (!isMuted) {
+                    bgMusic.volume = 0.2;
+                    bgMusic.play().catch(err => console.log("Audio block"));
+                }
+            } catch (err) {}
 
-            document.getElementById('overlay').style.display = 'none';
-            isStarted = true;
+            resize();
             
+            // Build Space
             for(let i=0; i<15; i++) tunnelRings.push({ z: i * 150 });
             for(let i=0; i<400; i++) {
                 stars.push({
-                    x: (Math.random() - 0.5) * 3000,
-                    y: (Math.random() - 0.5) * 3000,
+                    x: (Math.random() - 0.5) * 3500,
+                    y: (Math.random() - 0.5) * 3500,
                     z: Math.random() * 2000,
                 });
             }
 
+            document.getElementById('overlay').style.display = 'none';
+            isStarted = true;
             requestAnimationFrame(gameLoop);
         }
 
+        // --- INPUT HANDLING ---
         function handleKeyDown(e) { if (!e.repeat && (e.code === "Space" || e.code === "Enter")) processBoost(); }
         function handleKeyUp(e) { if (e.code === "Space" || e.code === "Enter") switchIsDown = false; }
-        function handleMouseDown(e) { if (e.target.id === 'home-button') return; processBoost(); }
+        function handleMouseDown(e) { if (e.target.id === 'home-button' || e.target.className === 'btn-start') return; processBoost(); }
         function handleMouseUp() { switchIsDown = false; }
 
         function processBoost() {
             if (!isStarted || switchIsDown) return;
             switchIsDown = true;
 
-            // DRAMATIC BOOST
-            targetSpeed = 100; // Instant jump to high speed
-            if (!lowSensoryMode) shake = 15; // Trigger camera shake
+            // --- DATA COLLECTION ---
+            sessionHits++;
+            hitDisplay.innerText = sessionHits;
+            let totalS = parseInt(localStorage.getItem('statSuccess') || 0);
+            localStorage.setItem('statSuccess', totalS + 1);
+
+            // Warp Physics
+            targetSpeed = 110; 
+            if (!lowSensoryMode) shake = 18; 
             
             playWarpSound();
             
             if (!lowSensoryMode) {
                 flash.style.backgroundColor = "white";
-                flash.style.opacity = 0.3;
+                flash.style.opacity = 0.25;
                 setTimeout(() => flash.style.opacity = 0, 150);
             }
-            if (navigator.vibrate) navigator.vibrate([50, 30, 50]);
+            if (navigator.vibrate) navigator.vibrate([50, 30]);
         }
 
         function playWarpSound() {
+            if(!audioCtx) return;
             const now = audioCtx.currentTime;
-            
-            // Sub-Bass Engine Thump
-            const kick = audioCtx.createOscillator();
-            const g1 = audioCtx.createGain();
-            kick.connect(g1); g1.connect(audioCtx.destination);
-            kick.frequency.setValueAtTime(100, now);
-            kick.frequency.exponentialRampToValueAtTime(30, now + 0.5);
-            g1.gain.setValueAtTime(0.5, now);
-            g1.gain.exponentialRampToValueAtTime(0.001, now + 0.5);
-            kick.start(); kick.stop(now + 0.5);
-
-            // Rising Warp Hum
-            const hum = audioCtx.createOscillator();
-            const g2 = audioCtx.createGain();
-            hum.type = 'sawtooth';
-            hum.connect(g2); g2.connect(audioCtx.destination);
-            hum.frequency.setValueAtTime(40, now);
-            hum.frequency.exponentialRampToValueAtTime(200, now + 0.3);
-            g2.gain.setValueAtTime(0.2, now);
-            g2.gain.exponentialRampToValueAtTime(0.001, now + 0.4);
-            hum.start(); hum.stop(now + 0.4);
+            // Bass Engine
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.connect(gain); gain.connect(audioCtx.destination);
+            osc.frequency.setValueAtTime(100, now);
+            osc.frequency.exponentialRampToValueAtTime(30, now + 0.4);
+            gain.gain.setValueAtTime(0.4, now);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + 0.4);
+            osc.start(); osc.stop(now + 0.4);
+            // High Hum
+            const osc2 = audioCtx.createOscillator();
+            const gain2 = audioCtx.createGain();
+            osc2.type = 'sawtooth';
+            osc2.connect(gain2); gain2.connect(audioCtx.destination);
+            osc2.frequency.setValueAtTime(40, now);
+            osc2.frequency.exponentialRampToValueAtTime(250, now + 0.2);
+            gain2.gain.setValueAtTime(0.15, now);
+            gain2.gain.exponentialRampToValueAtTime(0.001, now + 0.3);
+            osc2.start(); osc2.stop(now + 0.3);
         }
 
         function gameLoop() {
-            // Motion Blur background
+            // Motion Blur for streaking effect
             ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
             ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-            // Handle Speed Decay
-            speed += (targetSpeed - speed) * 0.1;
-            targetSpeed *= 0.94; // Quickly slow back down
-            if (targetSpeed < 4) targetSpeed = 4;
+            if (isStarted) {
+                // Physics decay
+                speed += (targetSpeed - speed) * 0.1;
+                targetSpeed *= 0.94; 
+                if (targetSpeed < 4) targetSpeed = 4;
+                if (shake > 0) shake *= 0.9;
 
-            // Handle Shake Decay
-            if (shake > 0) shake *= 0.9;
+                distance += Math.floor(speed / 5);
+                distDisplay.innerText = distance;
+            }
 
             ctx.save();
-            if (shake > 0.5) {
-                ctx.translate(Math.random()*shake - shake/2, Math.random()*shake - shake/2);
-            }
+            if (shake > 0.5) ctx.translate(Math.random()*shake - shake/2, Math.random()*shake - shake/2);
 
             drawStars();
             drawTunnel();
@@ -172,60 +200,41 @@
         function drawStars() {
             const cx = canvas.width / 2;
             const cy = canvas.height / 2;
-            
             stars.forEach(s => {
                 s.z -= speed * 2; 
                 if (s.z <= 0) s.z = 2000;
-
                 const perspective = 600 / (600 + s.z);
                 const x = cx + s.x * perspective;
                 const y = cy + s.y * perspective;
-
-                // STRETCH LOGIC:
-                // Calculate position of the star in the PREVIOUS frame to create the streak
-                const prevZ = s.z + speed * 3; 
+                const prevZ = s.z + speed * 4; 
                 const prevP = 600 / (600 + prevZ);
                 const px = cx + s.x * prevP;
                 const py = cy + s.y * prevP;
-
                 const alpha = 1 - (s.z / 2000);
                 ctx.strokeStyle = `rgba(255, 255, 255, ${alpha})`;
-                ctx.lineWidth = 2 * perspective + (speed / 20); // Get thicker as we go faster
-                
-                ctx.beginPath();
-                ctx.moveTo(x, y);
-                ctx.lineTo(px, py);
-                ctx.stroke();
+                ctx.lineWidth = 1 + (speed / 25);
+                ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(px, py); ctx.stroke();
             });
         }
 
         function drawTunnel() {
             const cx = canvas.width / 2;
             const cy = canvas.height / 2;
-
             tunnelRings.forEach(ring => {
                 ring.z -= speed;
-                if (ring.z <= 0) {
-                    ring.z = 1800;
-                    tunnelHue = (tunnelHue + 20) % 360;
-                }
-
+                if (ring.z <= 0) { ring.z = 1800; tunnelHue = (tunnelHue + 20) % 360; }
                 const perspective = 500 / (500 + ring.z);
-                const size = 2800 * perspective;
-                
+                const size = 3000 * perspective;
                 ctx.strokeStyle = `hsl(${tunnelHue}, 100%, 50%)`;
                 ctx.lineWidth = 8 * perspective;
                 ctx.globalAlpha = 1 - (ring.z / 1800);
-
                 ctx.strokeRect(cx - size/2, cy - size/2, size, size);
             });
             ctx.globalAlpha = 1;
         }
 
-        window.onresize = () => {
-            canvas.width = window.innerWidth;
-            canvas.height = window.innerHeight;
-        };
+        function resize() { canvas.width = window.innerWidth; canvas.height = window.innerHeight; }
+        window.onresize = resize;
     </script>
 </body>
 </html>
