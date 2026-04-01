@@ -22,22 +22,21 @@
 
         #overlay {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: #000; color: #00FFFF; display: flex; 
+            background: #000; color: #00FF00; display: flex; 
             flex-direction: column; justify-content: center; align-items: center; 
             z-index: 100; cursor: pointer; text-align: center;
         }
         .btn-ui {
-            font-size: 50px; padding: 30px 60px; border: 8px solid #00FFFF;
-            background: transparent; color: #00FFFF; font-weight: bold;
-            border-radius: 20px; box-shadow: 0 0 30px #00FFFF;
+            font-size: 50px; padding: 30px 60px; border: 8px solid #00FF00;
+            background: transparent; color: #00FF00; font-weight: bold;
+            border-radius: 20px; box-shadow: 0 0 30px #00FF00;
         }
 
-        /* STAGE ELEMENTS */
         .speaker {
             position: absolute; bottom: 10%; width: 15vw; height: 40vh;
             background: #111; border: 5px solid #333; border-radius: 20px;
             display: flex; flex-direction: column; align-items: center; justify-content: space-around;
-            padding: 10px; box-shadow: 0 0 20px rgba(0,255,255,0.2);
+            padding: 10px;
         }
         .speaker-left { left: 5%; }
         .speaker-right { right: 5%; }
@@ -48,12 +47,12 @@
         }
 
         #dj-booth {
-            font-size: 220px; z-index: 50; transition: transform 0.1s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            font-size: 220px; z-index: 50; transition: transform 0.1s;
         }
 
         canvas { position: absolute; top: 0; left: 0; pointer-events: none; z-index: 5; }
         #flash { position: fixed; top:0; left:0; width:100%; height:100%; opacity: 0; z-index: 150; pointer-events: none; }
-        #hud { position: absolute; top: 20px; right: 20px; color: #00FFFF; font-size: 24px; opacity: 0.5; }
+        #hud { position: absolute; top: 20px; right: 20px; color: #00FF00; font-size: 30px; font-weight: bold; }
     </style>
 </head>
 <body onkeydown="handleInput(event)" onmousedown="handleInput(event)">
@@ -63,10 +62,9 @@
 
     <div id="overlay" onclick="startEngine()">
         <div class="btn-ui">START THE PARTY</div>
-        <p style="margin-top: 20px; color: white; font-size: 24px;">(Every tap makes music!)</p>
+        <p style="margin-top: 20px; color: white; font-size: 24px;">(Click for different sounds!)</p>
     </div>
 
-    <!-- SPEAKERS -->
     <div class="speaker speaker-left">
         <div class="cone" id="cone-l1"></div>
         <div class="cone" id="cone-l2"></div>
@@ -92,23 +90,21 @@
         const booth = document.getElementById('dj-booth');
         const flash = document.getElementById('flash');
         
-        // --- HUB SETTINGS ---
         const lowSensoryMode = localStorage.getItem('lowSensory') === 'true';
         const isMuted = localStorage.getItem('muteMusic') === 'true';
 
         let audioCtx, isStarted = false;
         let pressCount = 0;
-        let currentBank = 0; // 0: Techno, 1: Funny, 2: Drumkit
+        let currentBank = 0; 
         const bankNames = ["TECHNO", "FUNNY", "DRUMS"];
+        const bankEmojis = ["🎧", "🤪", "🥁"];
 
         function startEngine() {
             audioCtx = new (window.AudioContext || window.webkitAudioContext)();
             canvas.width = window.innerWidth;
             canvas.height = window.innerHeight;
-            
             bgMusic.volume = isMuted ? 0 : 0.15;
             bgMusic.play();
-
             document.getElementById('overlay').style.display = 'none';
             isStarted = true;
             requestAnimationFrame(gameLoop);
@@ -123,32 +119,30 @@
 
         function triggerDJEffect() {
             pressCount++;
+            
+            // Switch Banks every 10 presses
             if (pressCount % 10 === 0) {
                 currentBank = (currentBank + 1) % 3;
                 document.getElementById('hud').innerText = `Mode: ${bankNames[currentBank]}`;
+                booth.innerText = bankEmojis[currentBank];
             }
 
-            // 1. Play Sound based on current bank
             playBankSound();
 
-            // 2. Animate Booth (Spin/Zoom)
             const spin = (Math.random() - 0.5) * 60;
-            booth.style.transform = `scale(1.5) rotate(${spin}deg)`;
+            booth.style.transform = `scale(1.6) rotate(${spin}deg)`;
             setTimeout(() => booth.style.transform = `scale(1) rotate(0deg)`, 100);
 
-            // 3. Pulse Speakers
             document.querySelectorAll('.cone').forEach(c => {
-                c.style.transform = "scale(1.2)";
+                c.style.transform = "scale(1.25)";
                 setTimeout(() => c.style.transform = "scale(1)", 100);
             });
 
-            // 4. Visual Feedback
             if (!lowSensoryMode) {
                 flash.style.backgroundColor = `hsl(${Math.random()*360}, 100%, 50%)`;
                 flash.style.opacity = 0.3;
                 setTimeout(() => flash.style.opacity = 0, 80);
             }
-
             if (navigator.vibrate) navigator.vibrate(50);
         }
 
@@ -158,26 +152,28 @@
             const gain = audioCtx.createGain();
             osc.connect(gain); gain.connect(audioCtx.destination);
 
-            if (currentBank === 0) { // TECHNO
+            if (currentBank === 0) { // TECHNO (Siren Sweep)
                 osc.type = 'sawtooth';
-                osc.frequency.setValueAtTime(400 + Math.random()*400, now);
-                osc.frequency.exponentialRampToValueAtTime(50, now + 0.2);
-                gain.gain.setValueAtTime(0.3, now);
+                osc.frequency.setValueAtTime(600, now);
+                osc.frequency.exponentialRampToValueAtTime(100, now + 0.2);
+                gain.gain.setValueAtTime(0.2, now);
                 gain.gain.exponentialRampToValueAtTime(0.01, now + 0.2);
             } 
-            else if (currentBank === 1) { // FUNNY
+            else if (currentBank === 1) { // FUNNY (Fixed: Boing/Slide Whistle)
                 osc.type = 'triangle';
-                osc.frequency.setValueAtTime(100 + Math.random()*800, now);
-                osc.frequency.quadraticCurveTo(1200, now + 0.1, 100, now + 0.3);
-                gain.gain.setValueAtTime(0.4, now);
+                const startFreq = 150 + Math.random() * 300;
+                osc.frequency.setValueAtTime(startFreq, now);
+                osc.frequency.linearRampToValueAtTime(startFreq * 3, now + 0.15); // Slide up
+                osc.frequency.linearRampToValueAtTime(startFreq, now + 0.3);      // Slide down
+                gain.gain.setValueAtTime(0.3, now);
                 gain.gain.exponentialRampToValueAtTime(0.01, now + 0.3);
             }
-            else { // DRUMS
+            else { // DRUMS (Kick Drum)
                 osc.type = 'sine';
                 osc.frequency.setValueAtTime(150, now);
-                osc.frequency.exponentialRampToValueAtTime(0.01, now + 0.1);
-                gain.gain.setValueAtTime(0.8, now);
-                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.1);
+                osc.frequency.exponentialRampToValueAtTime(0.01, now + 0.15);
+                gain.gain.setValueAtTime(0.6, now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.15);
             }
 
             osc.start(); osc.stop(now + 0.4);
@@ -185,41 +181,28 @@
 
         function gameLoop() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
-
             if (!lowSensoryMode) {
-                // Draw Stage Lights
                 const time = Date.now() * 0.001;
                 drawLight(canvas.width * 0.2, 0, time);
                 drawLight(canvas.width * 0.8, 0, time * 1.2);
             }
-
             requestAnimationFrame(gameLoop);
         }
 
         function drawLight(x, y, t) {
-            const angle = Math.sin(t) * 0.5;
+            const angle = Math.sin(t) * 0.6;
             ctx.save();
             ctx.translate(x, y);
             ctx.rotate(angle);
-            
             const grd = ctx.createLinearGradient(0, 0, 0, canvas.height);
-            grd.addColorStop(0, "rgba(0, 255, 255, 0.2)");
+            grd.addColorStop(0, "rgba(255, 255, 255, 0.2)");
             grd.addColorStop(1, "transparent");
-            
             ctx.fillStyle = grd;
-            ctx.beginPath();
-            ctx.moveTo(0, 0);
-            ctx.lineTo(-150, canvas.height);
-            ctx.lineTo(150, canvas.height);
-            ctx.closePath();
-            ctx.fill();
+            ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(-180, canvas.height); ctx.lineTo(180, canvas.height); ctx.closePath(); ctx.fill();
             ctx.restore();
         }
 
-        window.onresize = () => {
-            canvas.width = window.innerWidth;
-            canvas.height = window.innerHeight;
-        };
+        window.onresize = () => { canvas.width = window.innerWidth; canvas.height = window.innerHeight; };
     </script>
 </body>
 </html>
