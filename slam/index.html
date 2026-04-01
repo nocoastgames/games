@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>NEON SLAM - TIMING SKILLS</title>
+    <style>
+        body { 
+            background-color: #000; margin: 0; overflow: hidden; 
+            display: flex; flex-direction: column; justify-content: center; 
+            align-items: center; height: 100vh; font-family: 'Arial Black', sans-serif;
+            user-select: none; touch-action: manipulation;
+        }
+
+        #home-button {
+            position: fixed; top: 15px; left: 15px; z-index: 1000;
+            color: white; text-decoration: none; font-size: 24px;
+            background: rgba(255, 255, 255, 0.1); padding: 10px; 
+            border-radius: 10px; opacity: 0.3; transition: opacity 0.3s;
+        }
+        #home-button:hover { opacity: 1.0; background: rgba(255, 255, 255, 0.3); }
+
+        #overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: #000; color: #00FF00; display: flex; 
+            flex-direction: column; justify-content: center; align-items: center; 
+            z-index: 100; cursor: pointer; text-align: center;
+        }
+        .btn-ui {
+            font-size: 50px; padding: 30px 60px; border: 8px solid #00FF00;
+            background: transparent; color: #00FF00; font-weight: bold;
+            border-radius: 20px; box-shadow: 0 0 30px #00FF00;
+        }
+
+        canvas { display: block; position: absolute; top: 0; left: 0; }
+        #flash { position: fixed; top:0; left:0; width:100%; height:100%; opacity: 0; z-index: 150; pointer-events: none; }
+        #hud { position: absolute; top: 20px; right: 20px; color: #00FF00; font-size: 30px; font-weight: bold; z-index: 50; }
+        h1 { color: #333; position: absolute; bottom: 20px; letter-spacing: 10px; pointer-events: none; }
+    </style>
+</head>
+<body onkeydown="handleKeyDown(event)" onkeyup="handleKeyUp(event)" onmousedown="handleMouseDown(event)" onmouseup="handleMouseUp(event)">
+
+    <a id="home-button" href="../index.html">🏠</a>
+    <div id="flash"></div>
+
+    <div id="overlay" onclick="startEngine()">
+        <div class="btn-ui">START SLAMMING</div>
+        <p style="margin-top: 20px; color: white; font-size: 24px;">(Wait for the bar -> Hit the Target!)</p>
+    </div>
+
+    <div id="hud">Wins: 0</div>
+    <canvas id="gameCanvas"></canvas>
+    <h1>NEON SLAM</h1>
+
+    <audio id="bg-music" loop preload="auto">
+        <source src="https://www.soundhelix.com/examples/mp3/SoundHelix-Song-15.mp3" type="audio/mpeg">
+    </audio>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const flash = document.getElementById('flash');
+        const hud = document.getElementById('hud');
+        const bgMusic = document.getElementById('bg-music');
+        
+        // --- HUB SETTINGS ---
+        const lowSensoryMode = localStorage.getItem('lowSensory') === 'true';
+        const isMuted = localStorage.getItem('muteMusic') === 'true';
+
+        let audioCtx, isStarted = false, isWinner = false;
+        let lastPressTime = 0, switchIsDown = false, inputBlocked = false;
+        
+        let winCount = 0;
+        let barY = 0;
+        let barDir = 1;
+        let barSpeed = 5;
+        let targetZone = { y: 0, h: 120 };
+        let meter = { x: 0, y: 0, w: 100, h: 0 };
+        
+        let particles = [], lasers = [];
+
+        function startEngine() {
+            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            resize();
+            bgMusic.volume = isMuted ? 0 : 0.15;
+            bgMusic.play();
+            document.getElementById('overlay').style.display = 'none';
+            isStarted = true;
+            nextRound();
+            requestAnimationFrame(gameLoop);
+        }
+
+        function resize() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+            meter.h = canvas.height * 0.7;
+            meter.x = canvas.width / 2 - 50;
+            meter.y = canvas.height / 2 - (meter.h / 2);
+        }
+
+        function nextRound() {
+            isWinner = false;
+            inputBlocked = false;
+            // Randomize target zone location
+            targetZone.y = meter.y + 50 + Math.random() * (meter.h - 200);
+            barSpeed = 5 + (winCount * 0.5); // Get slightly faster
+            if (barSpeed > 15) barSpeed = 15;
+        }
+
+        function handleKeyDown(e) { if (!e.repeat && (e.code === "Space" || e.code === "Enter")) processInput(); }
+        function handleKeyUp(e) { if (e.code === "Space" || e.code === "Enter") switchIsDown = false; }
+        function handleMouseDown(e) { if (e.target.id === 'home-button') return; processInput(); }
+        function handleMouseUp() { switchIsDown = false; }
+
+        function processInput() {
+            if (!isStarted || isWinner || inputBlocked || switchIsDown) return;
+            switchIsDown = true;
+            
+            // Check Collision
+            const centerOfBar = meter.y + barY;
+            if (centerOfBar > targetZone.y && centerOfBar < targetZone.y + targetZone.h) {
+                success();
+            } else {
+                fail();
+            }
+        }
+
+        function success() {
+            isWinner = true;
+            winCount++;
+            hud.innerText = `Wins: ${winCount}`;
+            playSynth('win', 0.5);
+            if (!lowSensoryMode) triggerMegaParty();
+            setTimeout(nextRound, 3000);
+        }
+
+        function fail() {
+            inputBlocked = true;
+            playSynth('fail', 0.4);
+            if (navigator.vibrate) navigator.vibrate(100);
+            setTimeout(() => {
+                inputBlocked = false;
+            }, 800);
+        }
+
+        function playSynth(type, vol) {
+            const now = audioCtx.currentTime;
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.connect(gain); gain.connect(audioCtx.destination);
+
+            if (type === 'tick') {
+                osc.frequency.setValueAtTime(200, now);
+                gain.gain.setValueAtTime(vol, now);
+                gain.gain.exponentialRampToValueAtTime(0.001, now + 0.05);
+                osc.start(); osc.stop(now + 0.05);
+            } else if (type === 'win') {
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(440, now);
+                osc.frequency.exponentialRampToValueAtTime(880, now + 0.5);
+                gain.gain.setValueAtTime(vol, now);
+                gain.gain.exponentialRampToValueAtTime(0.001, now + 0.5);
+                osc.start(); osc.stop(now + 0.5);
+            } else if (type === 'fail') {
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(100, now);
+                gain.gain.setValueAtTime(vol, now);
+                gain.gain.exponentialRampToValueAtTime(0.001, now + 0.3);
+                osc.start(); osc.stop(now + 0.3);
+            }
+        }
+
+        function gameLoop() {
+            ctx.fillStyle = 'black';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            if (isStarted && !isWinner && !inputBlocked) {
+                barY += barSpeed * barDir;
+                if (barY > meter.h || barY < 0) barDir *= -1;
+            }
+
+            drawMeter();
+            drawEffects();
+            requestAnimationFrame(gameLoop);
+        }
+
+        function drawMeter() {
+            // 1. Draw Meter Background
+            ctx.strokeStyle = "#333";
+            ctx.lineWidth = 10;
+            ctx.strokeRect(meter.x, meter.y, meter.w, meter.h);
+
+            // 2. Draw Target Zone (The Goal)
+            ctx.fillStyle = "#00FF00";
+            ctx.globalAlpha = 0.3;
+            ctx.fillRect(meter.x, targetZone.y, meter.w, targetZone.h);
+            ctx.globalAlpha = 1.0;
+            ctx.strokeStyle = "#00FF00";
+            ctx.lineWidth = 4;
+            ctx.strokeRect(meter.x, targetZone.y, meter.w, targetZone.h);
+
+            // 3. Draw The Striker Bar
+            const currentY = meter.y + barY;
+            ctx.fillStyle = "white";
+            ctx.shadowBlur = 20; ctx.shadowColor = "white";
+            ctx.fillRect(meter.x - 20, currentY - 10, meter.w + 40, 20);
+            ctx.shadowBlur = 0;
+
+            // 4. Draw The Bell at the Top
+            ctx.font = "80px Arial";
+            ctx.textAlign = "center";
+            ctx.fillText("🔔", canvas.width/2, meter.y - 40);
+        }
+
+        function triggerMegaParty() {
+            flash.style.backgroundColor = "white"; flash.style.opacity = 0.3;
+            setTimeout(() => flash.style.opacity = 0, 100);
+            for(let i=0; i<10; i++) lasers.push({x: canvas.width/2, y: meter.y - 40, angle: Math.random()*Math.PI*2, life: 1});
+            for(let i=0; i<30; i++) particles.push({x: canvas.width/2, y: meter.y - 40, vx: (Math.random()-0.5)*25, vy: (Math.random()-0.5)*25, life: 1, color: '#00FF00', s: 15});
+        }
+
+        function drawEffects() {
+            lasers.forEach(l => {
+                ctx.strokeStyle = `rgba(0, 255, 0, ${l.life})`; ctx.lineWidth = 20*l.life;
+                ctx.beginPath(); ctx.moveTo(l.x, l.y);
+                ctx.lineTo(l.x+Math.cos(l.angle)*2000, l.y+Math.sin(l.angle)*2000); ctx.stroke();
+                l.life -= 0.03;
+            });
+            particles.forEach(p => {
+                ctx.fillStyle = p.color; ctx.globalAlpha = p.life;
+                ctx.beginPath(); ctx.arc(p.x, p.y, p.s, 0, Math.PI*2); ctx.fill();
+                p.x += p.vx; p.y += p.vy; p.life -= 0.02;
+            });
+            lasers = lasers.filter(l => l.life > 0);
+            particles = particles.filter(p => p.life > 0);
+            ctx.globalAlpha = 1;
+        }
+
+        window.onresize = resize;
+    </script>
+</body>
+</html>
