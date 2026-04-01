@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>MEGA LOG HOP - PRO EDITION</title>
+    <title>MEGA LOG HOP - CELEBRATION EDITION</title>
     <style>
         body { 
             background-color: #000; margin: 0; overflow: hidden; 
@@ -20,18 +20,20 @@
         }
         #home-button:hover { opacity: 1.0; background: rgba(255, 255, 255, 0.3); }
 
-        /* TEACHER SETTINGS UI */
-        #overlay {
+        /* SETTINGS & WIN OVERLAYS */
+        #overlay, #win-overlay {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
             background: #000; color: #FFF; display: flex; 
             flex-direction: column; justify-content: center; align-items: center; 
             z-index: 100; text-align: center;
         }
+        #win-overlay { background: rgba(0,0,0,0.85); display: none; z-index: 200; pointer-events: none; }
+
         .settings-box {
             background: #1a1a1a; padding: 25px; border-radius: 30px;
             border: 4px solid #FF8C00; width: 90%; max-width: 550px;
         }
-        .row { margin-bottom: 20px; }
+        .row { margin-bottom: 15px; }
         .color-grid { display: flex; justify-content: center; gap: 10px; flex-wrap: wrap; }
         .color-opt {
             width: 45px; height: 45px; border-radius: 50%; border: 4px solid transparent;
@@ -54,17 +56,18 @@
         }
 
         canvas { display: block; z-index: 10; }
-        h1 { color: #FF8C00; position: absolute; bottom: 20px; letter-spacing: 5px; opacity: 0.5; pointer-events: none; }
+        #flash { position: fixed; top:0; left:0; width:100%; height:100%; opacity: 0; z-index: 150; pointer-events: none; }
     </style>
 </head>
 <body onmousedown="handleInput(event)" onkeydown="handleInput(event)">
 
     <a id="home-button" href="../index.html">🏠</a>
+    <div id="flash"></div>
 
+    <!-- SETTINGS MENU -->
     <div id="overlay">
         <div class="settings-box">
             <h2 style="color: #FF8C00; margin-top:0;">FROG SETTINGS</h2>
-            
             <div class="row">
                 <p>Mode:</p>
                 <div class="toggle-group">
@@ -72,46 +75,45 @@
                     <button id="mode-match" class="toggle-btn" onclick="setMode('match')">COLOR MATCH</button>
                 </div>
             </div>
-
-            <div class="row">
-                <p>Target Color (Frog):</p>
-                <div id="target-colors" class="color-grid"></div>
-            </div>
-
-            <div id="distractor-row" class="row" style="display:none;">
-                <p>Include these Distractor Colors:</p>
-                <div id="distractor-colors" class="color-grid"></div>
-            </div>
-
+            <div class="row"><p>Frog Color:</p><div id="target-colors" class="color-grid"></div></div>
+            <div id="distractor-row" class="row" style="display:none;"><p>Distractor Colors:</p><div id="distractor-colors" class="color-grid"></div></div>
             <button class="btn-start" onclick="startEngine()">START GAME</button>
         </div>
     </div>
 
+    <!-- WIN OVERLAY -->
+    <div id="win-overlay">
+        <h2 style="color: #00FF00; font-size: 80px; margin: 0;">GREAT JOB!</h2>
+        <p style="color: white; font-size: 30px;">YOU CROSSED THE RIVER!</p>
+    </div>
+
     <canvas id="gameCanvas"></canvas>
+
+    <!-- BACKGROUND MUSIC (Fun & Bouncy) -->
+    <audio id="bg-music" loop preload="auto">
+        <source src="https://www.soundhelix.com/examples/mp3/SoundHelix-Song-8.mp3" type="audio/mpeg">
+    </audio>
 
     <script>
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
+        const flash = document.getElementById('flash');
+        const winOverlay = document.getElementById('win-overlay');
+        const bgMusic = document.getElementById('bg-music');
         
         const lowSensoryMode = localStorage.getItem('lowSensory') === 'true';
         let audioCtx, isStarted = false;
         let lastPressTime = 0, cooldown = 400;
 
-        // --- PALETTE ---
         const colorPalette = [
-            { id: 0, hue: 120, name: 'Green' },
-            { id: 1, hue: 180, name: 'Cyan' },
-            { id: 2, hue: 300, name: 'Pink' },
-            { id: 3, hue: 30,  name: 'Orange' },
-            { id: 4, hue: 0,   name: 'Red' },
-            { id: 5, hue: 240, name: 'Blue' }
+            { hue: 120, name: 'Green' }, { hue: 180, name: 'Cyan' },
+            { hue: 300, name: 'Pink' }, { hue: 30,  name: 'Orange' },
+            { hue: 0,   name: 'Red' }, { hue: 240, name: 'Blue' }
         ];
 
-        let gameMode = 'free';
-        let targetHue = 120;
-        let distractorHues = [300, 180]; // Default Pink and Cyan
+        let gameMode = 'free', targetHue = 120, distractorHues = [300, 180];
 
-        // --- UI SETUP ---
+        // UI Setup Logic
         function setMode(m) {
             gameMode = m;
             document.getElementById('mode-free').className = (m === 'free' ? 'toggle-btn active' : 'toggle-btn');
@@ -123,7 +125,6 @@
         const distractorGrid = document.getElementById('distractor-colors');
 
         colorPalette.forEach(c => {
-            // Create Target Opts
             let tDiv = document.createElement('div');
             tDiv.className = 'color-opt' + (c.hue === 120 ? ' active' : '');
             tDiv.style.backgroundColor = `hsl(${c.hue}, 100%, 50%)`;
@@ -134,7 +135,6 @@
             };
             targetGrid.appendChild(tDiv);
 
-            // Create Distractor Opts
             let dDiv = document.createElement('div');
             dDiv.className = 'color-opt distractor' + (distractorHues.includes(c.hue) ? ' active' : '');
             dDiv.style.backgroundColor = `hsl(${c.hue}, 100%, 50%)`;
@@ -150,27 +150,24 @@
             distractorGrid.appendChild(dDiv);
         });
 
-        // --- GAME LOGIC ---
-        let riverLanes = 3;
-        let steps = []; 
-        let frog = { stepIdx: 0, x: 0, y: 0, targetX: 0, isJumping: false, jumpT: 0, isBouncing: false };
-        let laneData = []; 
-        let gameState = "play";
+        // Game Variables
+        let riverLanes = 3, steps = [], laneData = [], gameState = "play";
         let bankWidth = 180, sandbarWidth = 80, laneWidth;
-        let sparkles = [], particles = [], lasers = [];
+        let frog = { stepIdx: 0, x: 0, y: 0, targetX: 0, isJumping: false, jumpT: 0, isBouncing: false };
+        let particles = [], lasers = [];
 
         function startEngine() {
             audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-            resize();
-            resetGame();
+            bgMusic.volume = 0.15;
+            bgMusic.play();
+            resize(); resetGame();
             document.getElementById('overlay').style.display = 'none';
             isStarted = true;
             requestAnimationFrame(gameLoop);
         }
 
         function resize() {
-            canvas.width = window.innerWidth;
-            canvas.height = window.innerHeight;
+            canvas.width = window.innerWidth; canvas.height = window.innerHeight;
             frog.y = canvas.height / 2;
             steps = [{ type: 'bank', x: bankWidth/2 }]; 
             let remainingWidth = canvas.width - (bankWidth * 2);
@@ -188,16 +185,11 @@
         }
 
         function resetGame() {
-            gameState = "play";
-            frog.stepIdx = 0;
-            frog.x = steps[0].x;
-            frog.y = canvas.height / 2;
-            frog.isJumping = false;
-            frog.isBouncing = false;
+            gameState = "play"; frog.stepIdx = 0; frog.x = steps[0].x; frog.y = canvas.height/2;
+            frog.isJumping = false; frog.isBouncing = false;
+            winOverlay.style.display = 'none';
             laneData = [];
-
             let logPool = (gameMode === 'match') ? [targetHue, ...distractorHues] : [targetHue, 30, 200, 300];
-
             for(let i=0; i<riverLanes; i++) {
                 let dir = (i % 2 === 0) ? 1 : -1;
                 let speed = 0.7 + Math.random() * 0.4;
@@ -222,16 +214,46 @@
 
         function jumpForward() {
             frog.isJumping = true; frog.isBouncing = false; frog.jumpT = 0;
-            frog.oldX = frog.x; frog.stepIdx++;
-            frog.targetX = steps[frog.stepIdx].x;
+            frog.oldX = frog.x; frog.stepIdx++; frog.targetX = steps[frog.stepIdx].x;
             playSynth('jump', 0.2);
         }
 
         function bounceBack() {
             frog.isJumping = true; frog.isBouncing = true; frog.jumpT = 0;
-            frog.oldX = frog.x; frog.stepIdx--; 
-            frog.targetX = steps[frog.stepIdx].x;
+            frog.oldX = frog.x; frog.stepIdx--; frog.targetX = steps[frog.stepIdx].x;
             playSynth('bounce', 0.3);
+        }
+
+        function winSequence() {
+            gameState = "win";
+            winOverlay.style.display = 'flex';
+            playSynth('win', 0.6);
+            
+            let winTimer = setInterval(() => {
+                if(!lowSensoryMode) spawnFirework(Math.random()*canvas.width, Math.random()*canvas.height);
+            }, 400);
+
+            setTimeout(() => {
+                clearInterval(winTimer);
+                resetGame();
+            }, 5000);
+        }
+
+        function spawnFirework(x, y) {
+            flashScreen("white", 150);
+            let hue = colorPalette[Math.floor(Math.random()*colorPalette.length)].hue;
+            for(let i=0; i<20; i++) {
+                particles.push({
+                    x: x, y: y, vx: (Math.random()-0.5) * 20, vy: (Math.random()-0.5) * 20, 
+                    life: 1, color: `hsl(${hue}, 100%, 50%)`, s: 10
+                });
+            }
+        }
+
+        function flashScreen(color, time) {
+            if (lowSensoryMode) return;
+            flash.style.backgroundColor = color; flash.style.opacity = 1;
+            setTimeout(() => flash.style.opacity = 0, time);
         }
 
         function playSynth(type, vol) {
@@ -244,13 +266,22 @@
                 gain.gain.setValueAtTime(vol, now); gain.gain.exponentialRampToValueAtTime(0.01, now + 0.1);
                 osc.start(); osc.stop(now + 0.1);
             } else if (type === 'bounce') {
-                osc.type = 'square'; osc.frequency.setValueAtTime(400, now); osc.frequency.exponentialRampToValueAtTime(100, now + 0.3);
+                osc.type = 'square'; osc.frequency.setValueAtTime(400, now);
+                osc.frequency.exponentialRampToValueAtTime(100, now + 0.3);
                 gain.gain.setValueAtTime(vol, now); gain.gain.exponentialRampToValueAtTime(0.01, now + 0.3);
                 osc.start(); osc.stop(now + 0.3);
             } else if (type === 'win') {
-                osc.type = 'square'; osc.frequency.setValueAtTime(400, now); osc.frequency.exponentialRampToValueAtTime(1200, now + 0.6);
-                gain.gain.setValueAtTime(vol, now); gain.gain.exponentialRampToValueAtTime(0.01, now + 0.6);
-                osc.start(); osc.stop(now + 0.6);
+                // Jingle: Do-Mi-Sol-Do
+                const notes = [261, 329, 392, 523];
+                notes.forEach((f, i) => {
+                    const o = audioCtx.createOscillator();
+                    const g = audioCtx.createGain();
+                    o.connect(g); g.connect(audioCtx.destination);
+                    o.frequency.setValueAtTime(f, now + i * 0.15);
+                    g.gain.setValueAtTime(vol, now + i * 0.15);
+                    g.gain.exponentialRampToValueAtTime(0.01, now + i * 0.15 + 0.4);
+                    o.start(now + i * 0.15); o.stop(now + i * 0.15 + 0.4);
+                });
             }
         }
 
@@ -296,13 +327,22 @@
                 }
             } else { drawFrog(frog.x, frog.y); }
 
+            // Draw Victory Particles
+            particles.forEach(p => {
+                ctx.fillStyle = p.color; ctx.globalAlpha = p.life;
+                ctx.beginPath(); ctx.arc(p.x, p.y, p.s, 0, Math.PI*2); ctx.fill();
+                p.x += p.vx; p.y += p.vy; p.life -= 0.02;
+            });
+            particles = particles.filter(p => p.life > 0);
+            ctx.globalAlpha = 1;
+
             requestAnimationFrame(gameLoop);
         }
 
         function checkLanding() {
             let currentStep = steps[frog.stepIdx];
             if (currentStep.type === 'bank' && frog.stepIdx > 0) {
-                gameState = "win"; playSynth('win', 0.5); setTimeout(resetGame, 3000); return;
+                winSequence(); return;
             }
             if (currentStep.type === 'lane') {
                 let lane = laneData.find(l => l.laneIdx === currentStep.laneIdx);
@@ -313,43 +353,16 @@
             }
         }
 
-        // --- CUTE KAWAII FROG ---
         function drawFrog(x, y) {
             ctx.save(); ctx.translate(x, y);
-
-            // White Sticker Outline
-            ctx.fillStyle = 'white'; ctx.beginPath();
-            ctx.ellipse(0, 0, 58, 48, 0, 0, Math.PI*2); ctx.fill();
-
-            // Body
-            ctx.fillStyle = `hsl(${targetHue}, 100%, 45%)`;
-            ctx.beginPath(); ctx.ellipse(0, 5, 48, 40, 0, 0, Math.PI*2); ctx.fill();
-
-            // Kawaii Blush
-            ctx.fillStyle = 'rgba(255, 100, 150, 0.4)';
-            ctx.beginPath(); ctx.arc(-25, 10, 8, 0, Math.PI*2); ctx.fill();
-            ctx.beginPath(); ctx.arc(25, 10, 8, 0, Math.PI*2); ctx.fill();
-
-            // Huge Cute Eyes
-            ctx.fillStyle = 'white';
-            ctx.beginPath(); ctx.arc(-20, -25, 18, 0, Math.PI*2); ctx.fill();
-            ctx.beginPath(); ctx.arc(20, -25, 18, 0, Math.PI*2); ctx.fill();
-
-            // Large Pupils with Sparkles
-            ctx.fillStyle = '#111';
-            ctx.beginPath(); ctx.arc(-20, -25, 10, 0, Math.PI*2); ctx.fill();
-            ctx.beginPath(); ctx.arc(20, -25, 10, 0, Math.PI*2); ctx.fill();
-            
-            // Eye Shine
-            ctx.fillStyle = 'white';
-            ctx.beginPath(); ctx.arc(-16, -29, 4, 0, Math.PI*2); ctx.fill();
-            ctx.beginPath(); ctx.arc(24, -29, 4, 0, Math.PI*2); ctx.fill();
-
-            // Simple Smile
-            ctx.strokeStyle = `hsl(${targetHue}, 100%, 20%)`;
-            ctx.lineWidth = 3; ctx.lineCap = 'round';
+            ctx.fillStyle = 'white'; ctx.beginPath(); ctx.ellipse(0, 0, 58, 48, 0, 0, Math.PI*2); ctx.fill();
+            ctx.fillStyle = `hsl(${targetHue}, 100%, 45%)`; ctx.beginPath(); ctx.ellipse(0, 5, 48, 40, 0, 0, Math.PI*2); ctx.fill();
+            ctx.fillStyle = 'rgba(255, 100, 150, 0.4)'; ctx.beginPath(); ctx.arc(-25, 10, 8, 0, Math.PI*2); ctx.fill(); ctx.beginPath(); ctx.arc(25, 10, 8, 0, Math.PI*2); ctx.fill();
+            ctx.fillStyle = 'white'; ctx.beginPath(); ctx.arc(-20, -25, 18, 0, Math.PI*2); ctx.fill(); ctx.beginPath(); ctx.arc(20, -25, 18, 0, Math.PI*2); ctx.fill();
+            ctx.fillStyle = '#111'; ctx.beginPath(); ctx.arc(-20, -25, 10, 0, Math.PI*2); ctx.fill(); ctx.beginPath(); ctx.arc(20, -25, 10, 0, Math.PI*2); ctx.fill();
+            ctx.fillStyle = 'white'; ctx.beginPath(); ctx.arc(-16, -29, 4, 0, Math.PI*2); ctx.fill(); ctx.beginPath(); ctx.arc(24, -29, 4, 0, Math.PI*2); ctx.fill();
+            ctx.strokeStyle = `hsl(${targetHue}, 100%, 20%)`; ctx.lineWidth = 3; ctx.lineCap = 'round';
             ctx.beginPath(); ctx.arc(0, 5, 15, 0.1 * Math.PI, 0.9 * Math.PI); ctx.stroke();
-
             ctx.restore();
         }
 
