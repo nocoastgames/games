@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>NEON BURST - SENSORY POWER</title>
+    <style>
+        body { 
+            background-color: #000; margin: 0; overflow: hidden; 
+            display: flex; flex-direction: column; justify-content: center; 
+            align-items: center; height: 100vh; font-family: sans-serif;
+            user-select: none; touch-action: manipulation;
+        }
+
+        #home-button {
+            position: fixed; top: 15px; left: 15px; z-index: 1000;
+            color: white; text-decoration: none; font-size: 24px;
+            background: rgba(255, 255, 255, 0.1); padding: 10px; 
+            border-radius: 10px; opacity: 0.3; transition: opacity 0.3s;
+        }
+        #home-button:hover { opacity: 1.0; background: rgba(255, 255, 255, 0.3); }
+
+        #overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: #000; color: #00FFFF; display: flex; 
+            flex-direction: column; justify-content: center; align-items: center; 
+            z-index: 100; cursor: pointer; text-align: center;
+        }
+        .btn-ui {
+            font-size: 50px; padding: 30px 60px; border: 8px solid #00FFFF;
+            background: transparent; color: #00FFFF; font-weight: bold;
+            border-radius: 20px; box-shadow: 0 0 30px #00FFFF;
+        }
+
+        canvas { display: block; position: absolute; top: 0; left: 0; }
+        #flash { position: fixed; top:0; left:0; width:100%; height:100%; opacity: 0; z-index: 150; pointer-events: none; }
+        h1 { color: #444; position: absolute; bottom: 20px; letter-spacing: 10px; pointer-events: none; z-index: 50; }
+    </style>
+</head>
+<body onmousedown="handleInput(event)" onkeydown="handleInput(event)">
+
+    <a id="home-button" href="../index.html">🏠</a>
+    <div id="flash"></div>
+
+    <div id="overlay" onclick="startEngine()">
+        <div class="btn-ui">START THE BURST</div>
+        <p style="margin-top: 20px; color: white; font-size: 24px;">(Every tap is a light show!)</p>
+    </div>
+
+    <canvas id="gameCanvas"></canvas>
+    <h1>NEON BURST</h1>
+
+    <!-- UNIQUE SENSORY BACKGROUND MUSIC -->
+    <audio id="bg-music" loop preload="auto">
+        <source src="https://www.soundhelix.com/examples/mp3/SoundHelix-Song-11.mp3" type="audio/mpeg">
+    </audio>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const flash = document.getElementById('flash');
+        const bgMusic = document.getElementById('bg-music');
+        
+        const lowSensoryMode = localStorage.getItem('lowSensory') === 'true';
+
+        let audioCtx, isStarted = false;
+        let lastPressTime = 0, cooldown = 300;
+        let shapes = [];
+
+        function startEngine() {
+            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            resize();
+            bgMusic.volume = 0.15; bgMusic.play();
+            document.getElementById('overlay').style.display = 'none';
+            isStarted = true;
+            requestAnimationFrame(gameLoop);
+        }
+
+        function resize() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+
+        function handleInput(event) {
+            if (event.target.id === 'home-button' || !isStarted) return;
+            if (event.type === 'keydown' && event.code !== "Space" && event.code !== "Enter") return;
+
+            const now = Date.now();
+            if (now - lastPressTime < cooldown) return;
+            lastPressTime = now;
+
+            createMegaBurst();
+            playImpactSound();
+            
+            if (!lowSensoryMode) {
+                flash.style.backgroundColor = "white";
+                flash.style.opacity = 0.4;
+                setTimeout(() => flash.style.opacity = 0, 100);
+            }
+
+            if (navigator.vibrate) navigator.vibrate(80);
+        }
+
+        function createMegaBurst() {
+            const x = canvas.width / 2;
+            const y = canvas.height / 2;
+            const colorHue = Math.random() * 360;
+            
+            // Randomly choose an explosion style
+            const style = Math.floor(Math.random() * 3);
+
+            if (style === 0) {
+                // Polygon Spikes
+                for(let i=0; i<12; i++) {
+                    shapes.push({
+                        type: 'spike', x, y, 
+                        angle: (i/12) * Math.PI * 2,
+                        length: 0, targetLen: canvas.width * 0.8,
+                        width: 20, color: `hsl(${colorHue}, 100%, 50%)`,
+                        life: 1
+                    });
+                }
+            } else if (style === 1) {
+                // Expanding Hollow Rings
+                for(let i=0; i<5; i++) {
+                    shapes.push({
+                        type: 'ring', x, y,
+                        r: 0, targetR: (i + 1) * 200,
+                        color: `hsl(${colorHue}, 100%, 50%)`,
+                        life: 1, delay: i * 5
+                    });
+                }
+            } else {
+                // Massive Particles
+                for(let i=0; i<30; i++) {
+                    shapes.push({
+                        type: 'particle', x, y,
+                        vx: (Math.random()-0.5) * 40,
+                        vy: (Math.random()-0.5) * 40,
+                        s: 20 + Math.random() * 40,
+                        color: `hsl(${colorHue}, 100%, 50%)`,
+                        life: 1
+                    });
+                }
+            }
+        }
+
+        function playImpactSound() {
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.connect(gain); gain.connect(audioCtx.destination);
+            const now = audioCtx.currentTime;
+
+            // Deep, heavy impact sound
+            osc.type = 'sawtooth';
+            osc.frequency.setValueAtTime(60, now);
+            osc.frequency.exponentialRampToValueAtTime(10, now + 0.5);
+            
+            gain.gain.setValueAtTime(0.6, now);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + 0.5);
+            
+            osc.start(); osc.stop(now + 0.5);
+
+            // High "shimmer" layer
+            const osc2 = audioCtx.createOscillator();
+            const gain2 = audioCtx.createGain();
+            osc2.connect(gain2); gain2.connect(audioCtx.destination);
+            osc2.frequency.setValueAtTime(800, now);
+            osc2.frequency.exponentialRampToValueAtTime(2000, now + 0.1);
+            gain2.gain.setValueAtTime(0.2, now);
+            gain2.gain.exponentialRampToValueAtTime(0.001, now + 0.2);
+            osc2.start(); osc2.stop(now + 0.2);
+        }
+
+        function gameLoop() {
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.2)'; // Motion blur effect
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            shapes.forEach((s, i) => {
+                ctx.globalAlpha = s.life;
+                ctx.strokeStyle = s.color;
+                ctx.fillStyle = s.color;
+                ctx.lineWidth = 10;
+
+                if (s.type === 'spike') {
+                    s.length += (s.targetLen - s.length) * 0.1;
+                    const tx = s.x + Math.cos(s.angle) * s.length;
+                    const ty = s.y + Math.sin(s.angle) * s.length;
+                    ctx.beginPath();
+                    ctx.moveTo(s.x, s.y);
+                    ctx.lineTo(tx, ty);
+                    ctx.stroke();
+                } 
+                else if (s.type === 'ring') {
+                    s.r += (s.targetR - s.r) * 0.1;
+                    ctx.beginPath();
+                    ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
+                    ctx.stroke();
+                }
+                else if (s.type === 'particle') {
+                    s.x += s.vx;
+                    s.y += s.vy;
+                    ctx.beginPath();
+                    ctx.arc(s.x, s.y, s.s, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+
+                s.life -= 0.02;
+            });
+
+            shapes = shapes.filter(s => s.life > 0);
+            ctx.globalAlpha = 1;
+            requestAnimationFrame(gameLoop);
+        }
+
+        window.onresize = resize;
+    </script>
+</body>
+</html>
