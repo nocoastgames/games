@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>NEON CANVAS - ARTIST MODE</title>
+    <style>
+        body { 
+            background-color: #000; margin: 0; overflow: hidden; 
+            display: flex; justify-content: center; align-items: center; 
+            height: 100vh; font-family: sans-serif;
+            user-select: none; touch-action: manipulation;
+        }
+
+        #home-button {
+            position: fixed; top: 15px; left: 15px; z-index: 1000;
+            color: white; text-decoration: none; font-size: 24px;
+            background: rgba(255, 255, 255, 0.1); padding: 10px; 
+            border-radius: 10px; opacity: 0.3; transition: opacity 0.3s;
+        }
+        #home-button:hover { opacity: 1.0; background: rgba(255, 255, 255, 0.3); }
+
+        #overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: #000; color: #00FF00; display: flex; 
+            flex-direction: column; justify-content: center; align-items: center; 
+            z-index: 100; cursor: pointer; text-align: center;
+        }
+        .btn-ui {
+            font-size: 50px; padding: 30px 60px; border: 8px solid #00FF00;
+            background: transparent; color: #00FF00; font-weight: bold;
+            border-radius: 20px; box-shadow: 0 0 30px #00FF00;
+        }
+
+        canvas { display: block; position: absolute; top: 0; left: 0; }
+        #flash { position: fixed; top:0; left:0; width:100%; height:100%; opacity: 0; z-index: 150; pointer-events: none; }
+        
+        #hud { position: absolute; top: 20px; right: 20px; color: #00FF00; font-size: 30px; font-weight: bold; z-index: 50; }
+        h1 { color: #555; position: absolute; bottom: 20px; letter-spacing: 5px; pointer-events: none; z-index: 50; }
+    </style>
+</head>
+<body onmousedown="handleInput(event)" onkeydown="handleInput(event)">
+
+    <a id="home-button" href="../index.html">🏠</a>
+    <div id="flash"></div>
+
+    <div id="overlay" onclick="startEngine()">
+        <div class="btn-ui">START PAINTING</div>
+        <p style="margin-top: 20px; color: white; font-size: 24px;">(10 Splats to make a Masterpiece!)</p>
+    </div>
+
+    <div id="hud">Splats: 0/10</div>
+    <!-- Main Drawing Layer -->
+    <canvas id="mainCanvas"></canvas>
+    <!-- Animation Layer (Squeegee/Effects) -->
+    <canvas id="fxCanvas"></canvas>
+    
+    <h1>NEON CANVAS</h1>
+
+    <!-- UNIQUE CREATIVE BACKGROUND MUSIC -->
+    <audio id="bg-music" loop preload="auto">
+        <source src="https://www.soundhelix.com/examples/mp3/SoundHelix-Song-10.mp3" type="audio/mpeg">
+    </audio>
+
+    <script>
+        const mCanvas = document.getElementById('mainCanvas');
+        const mCtx = mCanvas.getContext('2d');
+        const fCanvas = document.getElementById('fxCanvas');
+        const fCtx = fCanvas.getContext('2d');
+        
+        const flash = document.getElementById('flash');
+        const hud = document.getElementById('hud');
+        const bgMusic = document.getElementById('bg-music');
+        
+        const lowSensoryMode = localStorage.getItem('lowSensory') === 'true';
+
+        let audioCtx, isStarted = false, isCleaning = false;
+        let lastPressTime = 0, cooldown = 300;
+        let splatCount = 0;
+        let squeegeeX = -100;
+
+        const neonColors = ['#00FFFF', '#FF00FF', '#00FF00', '#FFFF00', '#FF4500', '#FFFFFF'];
+
+        function startEngine() {
+            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            resize();
+            bgMusic.volume = 0.15;
+            bgMusic.play();
+            document.getElementById('overlay').style.display = 'none';
+            isStarted = true;
+            requestAnimationFrame(gameLoop);
+        }
+
+        function resize() {
+            mCanvas.width = fCanvas.width = window.innerWidth;
+            mCanvas.height = fCanvas.height = window.innerHeight;
+            mCtx.fillStyle = "black";
+            mCtx.fillRect(0,0, mCanvas.width, mCanvas.height);
+        }
+
+        function handleInput(event) {
+            if (event.target.id === 'home-button' || !isStarted || isCleaning) return;
+            if (event.type === 'keydown' && event.code !== "Space" && event.code !== "Enter") return;
+
+            const now = Date.now();
+            if (now - lastPressTime < cooldown) return;
+            lastPressTime = now;
+
+            splatCount++;
+            hud.innerText = `Splats: ${splatCount}/10`;
+            
+            createSplat();
+            playSplatSound();
+            
+            if (!lowSensoryMode) {
+                flash.style.backgroundColor = "rgba(255,255,255,0.2)";
+                flash.style.opacity = 1;
+                setTimeout(() => flash.style.opacity = 0, 50);
+            }
+
+            if (splatCount >= 10) {
+                setTimeout(startCleanup, 1000);
+            }
+            if (navigator.vibrate) navigator.vibrate(60);
+        }
+
+        function createSplat() {
+            const x = 100 + Math.random() * (mCanvas.width - 200);
+            const y = 100 + Math.random() * (mCanvas.height - 200);
+            const color = neonColors[Math.floor(Math.random() * neonColors.length)];
+            const size = 80 + Math.random() * 120;
+
+            mCtx.save();
+            mCtx.translate(x, y);
+            mCtx.fillStyle = color;
+            mCtx.shadowBlur = 20;
+            mCtx.shadowColor = color;
+
+            // Draw organic splat shape
+            mCtx.beginPath();
+            for (let i = 0; i < 8; i++) {
+                const angle = (i / 8) * Math.PI * 2;
+                const dist = size * (0.6 + Math.random() * 0.4);
+                const tx = Math.cos(angle) * dist;
+                const ty = Math.sin(angle) * dist;
+                if (i === 0) mCtx.moveTo(tx, ty);
+                else mCtx.quadraticCurveTo(0, 0, tx, ty);
+            }
+            mCtx.closePath();
+            mCtx.fill();
+
+            // Add some "drips"
+            for(let j=0; j<3; j++) {
+                const dx = (Math.random() - 0.5) * size;
+                const dy = Math.random() * size;
+                mCtx.beginPath();
+                mCtx.arc(dx, dy, size * 0.1, 0, Math.PI*2);
+                mCtx.fill();
+            }
+            mCtx.restore();
+        }
+
+        function playSplatSound() {
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.connect(gain); gain.connect(audioCtx.destination);
+            const now = audioCtx.currentTime;
+            
+            // "Squish" sound using noise and frequency slide
+            osc.type = 'triangle';
+            osc.frequency.setValueAtTime(150, now);
+            osc.frequency.exponentialRampToValueAtTime(40, now + 0.2);
+            
+            gain.gain.setValueAtTime(0.4, now);
+            gain.gain.exponentialRampToValueAtTime(0.01, now + 0.2);
+            osc.start(); osc.stop(now + 0.2);
+        }
+
+        function startCleanup() {
+            isCleaning = true;
+            squeegeeX = -150;
+            playCleanupSound();
+        }
+
+        function playCleanupSound() {
+            const noise = audioCtx.createBufferSource();
+            const buffer = audioCtx.createBuffer(1, audioCtx.sampleRate * 2, audioCtx.sampleRate);
+            const data = buffer.getChannelData(0);
+            for (let i = 0; i < data.length; i++) data[i] = Math.random() * 2 - 1;
+            noise.buffer = buffer;
+            const filter = audioCtx.createBiquadFilter();
+            filter.type = 'lowpass';
+            filter.frequency.value = 400;
+            const gain = audioCtx.createGain();
+            gain.gain.setValueAtTime(0.2, audioCtx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 1.5);
+            noise.connect(filter); filter.connect(gain); gain.connect(audioCtx.destination);
+            noise.start();
+        }
+
+        function gameLoop() {
+            fCtx.clearRect(0,0, fCanvas.width, fCanvas.height);
+
+            if (isCleaning) {
+                squeegeeX += 15;
+                
+                // Draw Squeegee (Cleaning Bar)
+                fCtx.fillStyle = "#555";
+                fCtx.fillRect(squeegeeX, 0, 100, fCanvas.height);
+                fCtx.fillStyle = "#FFF";
+                fCtx.fillRect(squeegeeX + 90, 0, 10, fCanvas.height);
+
+                // Erase from main canvas as we move
+                mCtx.fillStyle = "black";
+                mCtx.fillRect(squeegeeX - 20, 0, 40, mCanvas.height);
+
+                if (squeegeeX > fCanvas.width + 100) {
+                    isCleaning = false;
+                    splatCount = 0;
+                    hud.innerText = `Splats: 0/10`;
+                }
+            }
+
+            requestAnimationFrame(gameLoop);
+        }
+
+        window.onresize = resize;
+    </script>
+</body>
+</html>
