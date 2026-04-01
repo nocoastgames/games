@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>SNAKE - ACCESSIBILITY MODE</title>
+    <title>SNAKE - ARCADE MODE</title>
     <style>
         body { 
             background-color: #000; margin: 0; overflow: hidden; 
@@ -39,7 +39,7 @@
         #flash { position: fixed; top:0; left:0; width:100%; height:100%; opacity: 0; z-index: 150; pointer-events: none; }
         
         #hud { position: absolute; top: 20px; right: 20px; color: #00FF00; font-size: 30px; font-weight: bold; z-index: 50; }
-        h1 { color: #00FF00; position: absolute; bottom: 20px; letter-spacing: 5px; opacity: 0.5; pointer-events: none; }
+        h1 { color: #00FF00; position: absolute; bottom: 20px; letter-spacing: 5px; opacity: 0.3; pointer-events: none; }
     </style>
 </head>
 <body onmousedown="handleInput(event)" onkeydown="handleInput(event)">
@@ -49,7 +49,7 @@
 
     <div id="overlay" onclick="startEngine()">
         <div class="btn-ui">START SNAKE</div>
-        <p style="margin-top: 20px; color: white; font-size: 24px;">(Get 10 Apples to Win!)</p>
+        <p style="margin-top: 20px; color: white; font-size: 24px;">(Arcade Adventure Mode)</p>
     </div>
 
     <div id="win-overlay">
@@ -61,19 +61,19 @@
     <canvas id="gameCanvas"></canvas>
     <h1>MEGA SNAKE</h1>
 
-    <audio id="bg-beat" loop preload="auto">
-        <source src="https://www.soundhelix.com/examples/mp3/SoundHelix-Song-15.mp3" type="audio/mpeg">
+    <!-- NEW ARCADE STYLE BACKGROUND MUSIC -->
+    <audio id="bg-music" loop preload="auto">
+        <source src="https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3" type="audio/mpeg">
     </audio>
 
     <script>
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
-        const bgBeat = document.getElementById('bg-beat');
+        const bgMusic = document.getElementById('bg-music');
         const flash = document.getElementById('flash');
         const hud = document.getElementById('hud');
         const winOverlay = document.getElementById('win-overlay');
         
-        // --- SENSORY MODE CHECK ---
         const lowSensoryMode = localStorage.getItem('lowSensory') === 'true';
 
         let audioCtx, isStarted = false, gameState = "play";
@@ -88,8 +88,8 @@
             audioCtx = new (window.AudioContext || window.webkitAudioContext)();
             canvas.width = window.innerWidth;
             canvas.height = window.innerHeight;
-            bgBeat.volume = 0.2;
-            bgBeat.play();
+            bgMusic.volume = 0.2;
+            bgMusic.play();
             document.getElementById('overlay').style.display = 'none';
             isStarted = true;
             resetSnake();
@@ -124,9 +124,8 @@
             headSize = 60; 
             playSynth('kick', 0.9);
 
-            // Only flash screen if NOT in low sensory mode
             if (!lowSensoryMode) {
-                flashScreen("rgba(0, 255, 0, 0.3)", 80);
+                flashScreen("rgba(0, 255, 0, 0.2)", 80);
             }
             if (navigator.vibrate) navigator.vibrate(60);
         }
@@ -154,8 +153,7 @@
         }
 
         function megaCelebration(x, y) {
-            if (lowSensoryMode) return; // Skip all flashes/lasers/ripples
-
+            if (lowSensoryMode) return;
             flashScreen("white", 200);
             ripples.push({x: x, y: y, r: 10, opacity: 1});
             for(let i=0; i<8; i++) lasers.push({x: x, y: y, angle: (i * 45) * Math.PI/180, life: 1});
@@ -219,7 +217,7 @@
 
             if (headSize > 35) headSize -= 2;
 
-            // DRAW EFFECTS (Only process if lists aren't empty)
+            // EFFECTS
             lasers.forEach(l => {
                 ctx.strokeStyle = `rgba(0, 255, 255, ${l.life})`; ctx.lineWidth = 15 * l.life;
                 ctx.beginPath(); ctx.moveTo(l.x, l.y);
@@ -241,14 +239,14 @@
             particles = particles.filter(p => p.life > 0);
             ctx.globalAlpha = 1;
 
-            // DRAW APPLE
+            // APPLE
             if (gameState === "play") {
                 ctx.fillStyle = '#FF0000'; ctx.shadowBlur = 40; ctx.shadowColor = "red";
                 ctx.beginPath(); ctx.arc(apple.x, apple.y, 35, 0, Math.PI * 2); ctx.fill();
                 ctx.shadowBlur = 0;
             }
 
-            // DRAW SNAKE
+            // SNAKE
             snake.forEach((seg, i) => {
                 ctx.fillStyle = `hsl(${120 + i * 5}, 100%, 50%)`;
                 let r = (i === 0) ? headSize : 25 - (i * 0.5);
