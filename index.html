@@ -91,7 +91,8 @@
         .loghop { border-color: #FF8C00; color: #FF8C00; }
         .racer { border-color: #FFD700; color: #FFD700; }
         .rocket { border-color: #FF4500; color: #FF4500; }
-        .canvas { border-color: #FFFFFF; color: #FFFFFF; } /* New White Theme */
+        .canvas { border-color: #FFFFFF; color: #FFFFFF; }
+        .monster { border-color: #CCFF00; color: #CCFF00; } /* Neon Lime Theme */
 
         /* Teacher / Donation Section */
         footer {
@@ -109,7 +110,7 @@
 <body>
 
     <h1>Student Interaction Hub</h1>
-    <p class="subtitle">One-Button Experiences for All Abilities</p>
+    <p class="subtitle">Cause-and-Effect Experiences</p>
 
     <!-- SENSORY TOGGLE -->
     <div class="sensory-controls">
@@ -160,11 +161,18 @@
             <p class="game-desc">Build, fuel, and launch the rocket into space.</p>
         </a>
 
-        <!-- NEON CANVAS (NEW) -->
+        <!-- NEON CANVAS -->
         <a href="canvas/index.html" class="game-card canvas">
             <span class="game-icon">🎨</span>
             <span class="game-title">NEON CANVAS</span>
             <p class="game-desc">Splash neon paint to create your own masterpiece.</p>
+        </a>
+
+        <!-- FEED THE MONSTER (NEW) -->
+        <a href="monster/index.html" class="game-card monster">
+            <span class="game-icon">👾</span>
+            <span class="game-title">MONSTER FEED</span>
+            <p class="game-desc">Launch snacks into the monster's mouth for a surprise.</p>
         </a>
     </div>
 
@@ -190,6 +198,7 @@
             const isLow = localStorage.getItem('lowSensory') === 'true';
             localStorage.setItem('lowSensory', !isLow);
             updateButton();
+            // Optional: Refresh page to apply instantly if a game is open in a tab
         }
 
         updateButton();
