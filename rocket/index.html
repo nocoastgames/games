@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>MEGA ROCKET - FUEL UP</title>
+    <title>MEGA ROCKET - PRO MISSION</title>
     <style>
         body { 
             background-color: #000; margin: 0; overflow: hidden; 
@@ -16,8 +16,7 @@
             position: fixed; top: 15px; left: 15px; z-index: 1000;
             color: white; text-decoration: none; font-size: 24px;
             background: rgba(255, 255, 255, 0.1); padding: 10px; 
-            border-radius: 10px; border: 1px solid rgba(255,255,255,0.2);
-            opacity: 0.3; transition: opacity 0.3s;
+            border-radius: 10px; opacity: 0.3; transition: opacity 0.3s;
         }
         #home-button:hover { opacity: 1.0; background: rgba(255, 255, 255, 0.3); }
 
@@ -27,7 +26,7 @@
             flex-direction: column; justify-content: center; align-items: center; 
             z-index: 100; cursor: pointer; text-align: center;
         }
-        #win-overlay { background: rgba(0,0,0,0.9); display: none; z-index: 200; }
+        #win-overlay { background: rgba(0,0,0,0.9); display: none; z-index: 200; pointer-events: none; }
 
         .btn-ui {
             font-size: 50px; padding: 30px 60px; border: 8px solid #FF4500;
@@ -37,8 +36,8 @@
 
         canvas { display: block; z-index: 10; }
         #flash { position: fixed; top:0; left:0; width:100%; height:100%; opacity: 0; z-index: 150; pointer-events: none; }
-        
-        h1 { color: #FF4500; position: absolute; bottom: 20px; letter-spacing: 10px; opacity: 0.4; pointer-events: none; }
+        #hud { position: absolute; top: 20px; right: 20px; color: #FF4500; font-size: 30px; font-weight: bold; z-index: 50; }
+        h1 { color: #FF4500; position: absolute; bottom: 20px; letter-spacing: 10px; opacity: 0.3; pointer-events: none; }
     </style>
 </head>
 <body onmousedown="handleInput(event)" onkeydown="handleInput(event)">
@@ -47,50 +46,59 @@
     <div id="flash"></div>
 
     <div id="overlay" onclick="startEngine()">
-        <div class="btn-ui">START MISSION</div>
-        <p style="margin-top: 20px; color: white; font-size: 24px;">(Build & Fuel to Launch!)</p>
+        <div class="btn-ui">ASSEMBLE ROCKET</div>
+        <p style="margin-top: 20px; color: white; font-size: 24px;">(Build, Fuel, and Blast Off!)</p>
     </div>
 
     <div id="win-overlay">
-        <h2 style="color: #FF4500; font-size: 80px; margin: 0;">BLAST OFF!</h2>
-        <p style="color: white; font-size: 30px;">SPACE EXPLORER!</p>
+        <h2 style="color: #FF4500; font-size: 80px; margin: 0;">MISSION COMPLETE</h2>
+        <p style="color: white; font-size: 30px;">YOU REACHED THE STARS!</p>
     </div>
 
+    <div id="hud">Step: 0/10</div>
     <canvas id="gameCanvas"></canvas>
     <h1>MEGA ROCKET</h1>
+
+    <audio id="bg-music" loop preload="auto">
+        <source src="https://www.soundhelix.com/examples/mp3/SoundHelix-Song-9.mp3" type="audio/mpeg">
+    </audio>
 
     <script>
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
         const flash = document.getElementById('flash');
+        const hud = document.getElementById('hud');
         const winOverlay = document.getElementById('win-overlay');
+        const bgMusic = document.getElementById('bg-music');
         
+        const lowSensoryMode = localStorage.getItem('lowSensory') === 'true';
+
         let audioCtx, isStarted = false, gameState = "build";
-        let lastPressTime = 0, cooldown = 300;
+        let lastPressTime = 0, cooldown = 400;
 
         let pressCount = 0;
         let rocketY = 0;
         let shakeAmount = 0;
         let particles = [], lasers = [], stars = [];
+        
+        // Parts fly-in state
+        let activePart = { id: 0, x: -500, y: 0, progress: 1 }; // progress 1 means it is 'attached'
 
         function startEngine() {
             audioCtx = new (window.AudioContext || window.webkitAudioContext)();
             canvas.width = window.innerWidth;
             canvas.height = window.innerHeight;
             rocketY = canvas.height * 0.75;
-            
-            for(let i=0; i<100; i++) {
-                stars.push({x: Math.random()*canvas.width, y: Math.random()*canvas.height, s: Math.random()*3});
-            }
-
+            bgMusic.volume = 0.2;
+            bgMusic.play();
+            for(let i=0; i<120; i++) stars.push({x: Math.random()*canvas.width, y: Math.random()*canvas.height, s: Math.random()*3});
             document.getElementById('overlay').style.display = 'none';
             isStarted = true;
             requestAnimationFrame(gameLoop);
         }
 
         function handleInput(event) {
-            if (event.target.id === 'home-button') return;
-            if (!isStarted || gameState !== "build") return;
+            if (event.target.id === 'home-button' || !isStarted || gameState !== "build") return;
             if (event.type === 'keydown' && event.code !== "Space" && event.code !== "Enter") return;
 
             const now = Date.now();
@@ -98,23 +106,21 @@
             lastPressTime = now;
 
             pressCount++;
+            hud.innerText = `Step: ${pressCount}/10`;
 
-            if (pressCount < 4) {
+            if (pressCount <= 7) {
+                // Fly in a new part
+                activePart = { id: pressCount, x: Math.random() > 0.5 ? -300 : canvas.width + 300, y: Math.random() * canvas.height, progress: 0 };
                 playSynth('clank', 0.5);
-            } else if (pressCount < 10) {
-                shakeAmount = (pressCount - 3) * 2;
-                playSynth('charge', 0.5);
+            } else if (pressCount <= 9) {
+                // Refueling (2 clicks)
+                shakeAmount = (pressCount - 7) * 4;
+                playSynth('charge', 0.6);
             } else {
                 launchRocket();
             }
 
-            flashScreen("rgba(255, 69, 0, 0.3)", 100);
-        }
-
-        function flashScreen(color, time) {
-            flash.style.backgroundColor = color;
-            flash.style.opacity = 1;
-            setTimeout(() => flash.style.opacity = 0, time);
+            if (!lowSensoryMode) flashScreen("rgba(255, 69, 0, 0.2)", 100);
             if (navigator.vibrate) navigator.vibrate(60);
         }
 
@@ -123,26 +129,18 @@
             const gain = audioCtx.createGain();
             osc.connect(gain); gain.connect(audioCtx.destination);
             const now = audioCtx.currentTime;
-
             if (type === 'clank') {
-                osc.type = 'triangle';
-                osc.frequency.setValueAtTime(150, now);
-                gain.gain.setValueAtTime(vol, now);
-                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.1);
-                osc.start(); osc.stop(now + 0.1);
+                osc.type = 'square'; osc.frequency.setValueAtTime(100, now);
+                gain.gain.setValueAtTime(vol, now); gain.gain.exponentialRampToValueAtTime(0.01, now + 0.15);
+                osc.start(); osc.stop(now + 0.15);
             } else if (type === 'charge') {
-                osc.frequency.setValueAtTime(100 + (pressCount * 60), now);
-                osc.frequency.linearRampToValueAtTime(400 + (pressCount * 60), now + 0.2);
-                gain.gain.setValueAtTime(vol, now);
-                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.2);
-                osc.start(); osc.stop(now + 0.2);
+                osc.frequency.setValueAtTime(200 + (pressCount * 80), now); osc.frequency.linearRampToValueAtTime(500 + (pressCount * 80), now + 0.3);
+                gain.gain.setValueAtTime(vol, now); gain.gain.exponentialRampToValueAtTime(0.01, now + 0.3);
+                osc.start(); osc.stop(now + 0.3);
             } else if (type === 'blast') {
-                osc.type = 'sawtooth';
-                osc.frequency.setValueAtTime(60, now);
-                osc.frequency.exponentialRampToValueAtTime(1500, now + 2.5);
-                gain.gain.setValueAtTime(vol, now);
-                gain.gain.exponentialRampToValueAtTime(0.01, now + 2.5);
-                osc.start(); osc.stop(now + 2.5);
+                osc.type = 'sawtooth'; osc.frequency.setValueAtTime(50, now); osc.frequency.exponentialRampToValueAtTime(1500, now + 3);
+                gain.gain.setValueAtTime(vol, now); gain.gain.exponentialRampToValueAtTime(0.01, now + 3);
+                osc.start(); osc.stop(now + 3);
             }
         }
 
@@ -152,31 +150,25 @@
         }
 
         function winSequence() {
-            gameState = "win";
+            gameState = "party";
             winOverlay.style.display = 'flex';
             let winTimer = setInterval(() => {
-                megaCelebration(Math.random()*canvas.width, Math.random()*canvas.height);
+                if (!lowSensoryMode) megaCelebration(Math.random()*canvas.width, Math.random()*canvas.height);
             }, 400);
-
-            setTimeout(() => {
-                clearInterval(winTimer);
-                resetGame();
-            }, 6000);
+            setTimeout(() => { clearInterval(winTimer); resetGame(); }, 6000);
         }
 
         function resetGame() {
-            pressCount = 0;
-            gameState = "build";
-            shakeAmount = 0;
+            pressCount = 0; gameState = "build"; shakeAmount = 0;
             rocketY = canvas.height * 0.75;
+            hud.innerText = `Step: 0/10`;
             winOverlay.style.display = 'none';
         }
 
         function gameLoop() {
-            ctx.fillStyle = 'black';
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.fillStyle = 'black'; ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-            // 1. Background Stars
+            // 1. Stars
             ctx.fillStyle = "white";
             stars.forEach(s => {
                 if (gameState === "launch") s.y += 30;
@@ -184,119 +176,95 @@
                 ctx.beginPath(); ctx.arc(s.x, s.y, s.s, 0, Math.PI*2); ctx.fill();
             });
 
-            // 2. Flight Logic
+            // 2. Part Animation
+            if (activePart.progress < 1) {
+                activePart.progress += 0.15; // Speed of fly-in
+            }
+
+            // 3. Flight
             let currentX = canvas.width/2 + (Math.random() * shakeAmount - shakeAmount/2);
             if (gameState === "launch") {
                 rocketY -= 15;
                 spawnSmoke(currentX, rocketY + 80);
-                if (rocketY < -300) winSequence();
+                if (rocketY < -400) winSequence();
             }
 
             drawRocket(currentX, rocketY);
             drawFuelGauge();
             drawEffects();
-
             requestAnimationFrame(gameLoop);
         }
 
         function drawFuelGauge() {
-            if (pressCount < 4 || gameState === "win") return;
-            
-            const gx = 80, gy = canvas.height * 0.2, gw = 60, gh = canvas.height * 0.6;
-            
-            // Outer Frame
-            ctx.strokeStyle = "white";
-            ctx.lineWidth = 4;
-            ctx.strokeRect(gx, gy, gw, gh);
-
-            // Fuel Level Calculation (Press 4-10)
-            let fuelLevel = Math.min(1, (pressCount - 3) / 7);
-            if (gameState === "launch") fuelLevel = 1; // Keep full during launch
-
-            // Fill
+            if (pressCount < 8 || gameState === "party") return;
+            const gx = 60, gy = canvas.height * 0.2, gw = 50, gh = canvas.height * 0.6;
+            ctx.strokeStyle = "white"; ctx.lineWidth = 4; ctx.strokeRect(gx, gy, gw, gh);
+            let fuelLevel = pressCount === 8 ? 0.5 : 1.0;
+            if (gameState === "launch") fuelLevel = 1;
             ctx.fillStyle = "#00FF00";
-            ctx.shadowBlur = 15; ctx.shadowColor = "#00FF00";
             let fillH = gh * fuelLevel;
             ctx.fillRect(gx + 5, gy + gh - fillH + 5, gw - 10, fillH - 10);
-            ctx.shadowBlur = 0;
-
-            // Label
-            ctx.fillStyle = "white";
-            ctx.font = "bold 20px sans-serif";
-            ctx.fillText("FUEL", gx + 5, gy - 20);
+            ctx.fillStyle = "white"; ctx.font = "bold 20px sans-serif"; ctx.fillText("FUEL", gx, gy - 20);
         }
 
-        function drawRocket(x, y) {
+        function drawRocket(rx, ry) {
             if (pressCount < 1) return;
-            ctx.save();
-            ctx.translate(x, y);
-
-            // Parts appear step by step
-            if (pressCount >= 1) { // Fins
-                ctx.fillStyle = "#555";
-                ctx.beginPath();
-                ctx.moveTo(-70, 80); ctx.lineTo(70, 80); ctx.lineTo(0, 30); ctx.closePath(); ctx.fill();
-            }
-            if (pressCount >= 2) { // Body
-                ctx.fillStyle = "white";
-                ctx.fillRect(-45, -80, 90, 160);
-                ctx.fillStyle = "#00FFFF";
-                ctx.beginPath(); ctx.arc(0, -20, 25, 0, Math.PI*2); ctx.fill();
-            }
-            if (pressCount >= 3) { // Nose
-                ctx.fillStyle = "red";
-                ctx.beginPath();
-                ctx.moveTo(-45, -80); ctx.lineTo(45, -80); ctx.lineTo(0, -180);
-                ctx.closePath(); ctx.fill();
-            }
             
+            const drawPart = (id, drawFunc) => {
+                ctx.save();
+                if (activePart.id === id && activePart.progress < 1) {
+                    // Interpolate position from fly-in start to rocket center
+                    let x = activePart.x + (rx - activePart.x) * activePart.progress;
+                    let y = activePart.y + (ry - activePart.y) * activePart.progress;
+                    ctx.translate(x, y);
+                } else if (pressCount >= id) {
+                    ctx.translate(rx, ry);
+                } else {
+                    ctx.restore(); return;
+                }
+                drawFunc();
+                ctx.restore();
+            };
+
+            drawPart(1, () => { ctx.fillStyle = "#666"; ctx.beginPath(); ctx.moveTo(-75, 80); ctx.lineTo(-40, 40); ctx.lineTo(-40, 80); ctx.closePath(); ctx.fill(); }); // Left Fin
+            drawPart(2, () => { ctx.fillStyle = "#666"; ctx.beginPath(); ctx.moveTo(75, 80); ctx.lineTo(40, 40); ctx.lineTo(40, 80); ctx.closePath(); ctx.fill(); });  // Right Fin
+            drawPart(3, () => { ctx.fillStyle = "#444"; ctx.fillRect(-25, 80, 50, 20); }); // Engine
+            drawPart(4, () => { ctx.fillStyle = "#EEE"; ctx.fillRect(-45, 0, 90, 80); });  // Lower Body
+            drawPart(5, () => { ctx.fillStyle = "#FFF"; ctx.fillRect(-45, -80, 90, 80); }); // Upper Body
+            drawPart(6, () => { ctx.fillStyle = "#FF0000"; ctx.beginPath(); ctx.moveTo(-45, -80); ctx.lineTo(45, -80); ctx.lineTo(0, -180); ctx.closePath(); ctx.fill(); }); // Nose
+            drawPart(7, () => { ctx.fillStyle = "#00FFFF"; ctx.beginPath(); ctx.arc(0, -30, 25, 0, Math.PI*2); ctx.fill(); ctx.strokeStyle="white"; ctx.lineWidth=3; ctx.stroke(); }); // Window
+
             if (gameState === "launch") {
-                let flameLen = 200 + Math.random()*100;
-                let grd = ctx.createLinearGradient(0, 80, 0, 80 + flameLen);
-                grd.addColorStop(0, "white"); grd.addColorStop(0.2, "yellow");
-                grd.addColorStop(0.5, "orange"); grd.addColorStop(1, "transparent");
-                ctx.fillStyle = grd;
-                ctx.beginPath();
-                ctx.moveTo(-35, 80); ctx.lineTo(35, 80); ctx.lineTo(0, 80 + flameLen);
-                ctx.closePath(); ctx.fill();
+                ctx.save(); ctx.translate(rx, ry);
+                let fl = 200 + Math.random()*100;
+                let grd = ctx.createLinearGradient(0, 100, 0, 100 + fl);
+                grd.addColorStop(0, "yellow"); grd.addColorStop(0.4, "orange"); grd.addColorStop(1, "transparent");
+                ctx.fillStyle = grd; ctx.beginPath(); ctx.moveTo(-30, 100); ctx.lineTo(30, 100); ctx.lineTo(0, 100+fl); ctx.closePath(); ctx.fill();
+                ctx.restore();
             }
-            ctx.restore();
         }
 
         function spawnSmoke(x, y) {
-            for(let i=0; i<5; i++) {
-                particles.push({
-                    x: x + (Math.random()*80-40), y: y, 
-                    vx: (Math.random()-0.5)*10, vy: 12 + Math.random()*15, 
-                    life: 1, color: "rgba(220,220,220,0.4)", s: 20 + Math.random()*30
-                });
-            }
+            for(let i=0; i<4; i++) particles.push({ x: x+(Math.random()*60-30), y: y, vx: (Math.random()-0.5)*8, vy: 10+Math.random()*10, life: 1, color: "rgba(200,200,200,0.4)", s: 15+Math.random()*20 });
         }
 
         function megaCelebration(x, y) {
-            flashScreen("white", 150);
+            if (lowSensoryMode) return;
+            flashScreen("white", 100);
             for(let i=0; i<10; i++) lasers.push({x: x, y: y, angle: Math.random()*Math.PI*2, life: 1});
-            for(let i=0; i<25; i++) particles.push({
-                x: x, y: y, vx: (Math.random()-0.5) * 25, vy: (Math.random()-0.5) * 25, 
-                life: 1, color: `hsl(${Math.random()*360}, 100%, 50%)`, s: 12
-            });
+            for(let i=0; i<20; i++) particles.push({ x: x, y: y, vx: (Math.random()-0.5)*20, vy: (Math.random()-0.5)*20, life: 1, color: `hsl(${Math.random()*360}, 100%, 50%)`, s: 12 });
+        }
+
+        function flashScreen(color, time) {
+            if (lowSensoryMode) return;
+            flash.style.backgroundColor = color; flash.style.opacity = 1;
+            setTimeout(() => flash.style.opacity = 0, time);
         }
 
         function drawEffects() {
-            lasers.forEach(l => {
-                ctx.strokeStyle = `rgba(255, 69, 0, ${l.life})`;
-                ctx.lineWidth = 25 * l.life;
-                ctx.beginPath(); ctx.moveTo(l.x, l.y);
-                ctx.lineTo(l.x + Math.cos(l.angle) * 2500, l.y + Math.sin(l.angle) * 2500); ctx.stroke();
-                l.life -= 0.03;
-            });
-            particles.forEach(p => {
-                ctx.fillStyle = p.color; ctx.globalAlpha = p.life;
-                ctx.beginPath(); ctx.arc(p.x, p.y, p.s, 0, Math.PI*2); ctx.fill();
-                p.x += p.vx; p.y += p.vy; p.life -= 0.02;
-            });
-            lasers = lasers.filter(l => l.life > 0);
-            particles = particles.filter(p => p.life > 0);
+            lasers.forEach(l => { ctx.strokeStyle = `rgba(255, 69, 0, ${l.life})`; ctx.lineWidth = 20*l.life; ctx.beginPath(); ctx.moveTo(l.x, l.y); ctx.lineTo(l.x+Math.cos(l.angle)*2000, l.y+Math.sin(l.angle)*2000); ctx.stroke(); l.life-=0.03; });
+            particles.forEach(p => { ctx.fillStyle = p.color; ctx.globalAlpha = p.life; ctx.beginPath(); ctx.arc(p.x, p.y, p.s, 0, Math.PI*2); ctx.fill(); p.x+=p.vx; p.y+=p.vy; p.life-=0.02; });
+            lasers = lasers.filter(l => l.life > 0); particles = particles.filter(p => p.life > 0);
             ctx.globalAlpha = 1;
         }
     </script>
