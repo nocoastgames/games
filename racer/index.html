@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>NEON RACER - ACCESSIBILITY EDITION</title>
+    <title>NEON RACER - PRO CIRCUIT</title>
     <style>
         body { 
             background-color: #000; margin: 0; overflow: hidden; 
@@ -15,30 +15,28 @@
         #home-button {
             position: fixed; top: 15px; left: 15px; z-index: 1000;
             color: white; text-decoration: none; font-size: 24px;
-            background: rgba(255, 255, 255, 0.1); padding: 10px; 
-            border-radius: 10px; opacity: 0.3; transition: opacity 0.3s;
+            background: rgba(255, 255, 255, 0.2); padding: 10px; 
+            border-radius: 10px; opacity: 0.5; transition: opacity 0.3s;
         }
-        #home-button:hover { opacity: 1.0; background: rgba(255, 255, 255, 0.3); }
 
         #overlay, #win-overlay {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
             background: #000; display: flex; 
             flex-direction: column; justify-content: center; align-items: center; 
-            z-index: 100; cursor: pointer; text-align: center;
+            z-index: 500; cursor: default;
         }
-        #win-overlay { background: rgba(0,0,0,0.9); display: none; z-index: 200; pointer-events: none; }
+        #win-overlay { background: rgba(0,0,0,0.95); display: none; z-index: 600; text-align: center; pointer-events: none; }
 
-        .btn-ui {
+        .btn-start {
             font-size: 50px; padding: 30px 60px; border: 8px solid #FFD700;
-            background: transparent; color: #FFD700; font-weight: bold;
+            background: #111; color: #FFD700; font-weight: bold;
             border-radius: 20px; box-shadow: 0 0 30px #FFD700;
+            cursor: pointer; outline: none;
         }
 
         canvas { display: block; z-index: 10; }
         #flash { position: fixed; top:0; left:0; width:100%; height:100%; opacity: 0; z-index: 150; pointer-events: none; }
-        
-        #hud { position: absolute; top: 20px; right: 20px; color: #FFD700; font-size: 30px; font-weight: bold; z-index: 50; }
-        h1 { color: #FFD700; position: absolute; bottom: 20px; letter-spacing: 10px; opacity: 0.3; pointer-events: none; }
+        #hud { position: absolute; top: 20px; right: 20px; color: #FFD700; font-size: 32px; font-weight: bold; z-index: 50; text-shadow: 0 0 10px #000; }
     </style>
 </head>
 <body onmousedown="handleInput(event)" onkeydown="handleInput(event)">
@@ -46,21 +44,19 @@
     <a id="home-button" href="../index.html">🏠</a>
     <div id="flash"></div>
 
-    <div id="overlay" onclick="startEngine()">
-        <div class="btn-ui">START RACING</div>
-        <p style="margin-top: 20px; color: white; font-size: 24px;">(Pump Switch for Speed!)</p>
+    <div id="overlay">
+        <button class="btn-start" onclick="startEngine(event)">START RACING</button>
+        <p style="margin-top: 20px; color: white; font-size: 24px;">Complete 5 Laps to Win!</p>
     </div>
 
     <div id="win-overlay">
-        <h2 id="win-title" style="color: #FFD700; font-size: 80px; margin: 0;">CHAMPION!</h2>
-        <p style="color: white; font-size: 30px;">5 LAPS COMPLETE!</p>
+        <h2 id="win-title" style="color: #FFD700; font-size: 100px; margin: 0;">CHAMPION!</h2>
+        <p style="color: white; font-size: 40px;">YOU TOOK THE CHECKERED FLAG!</p>
     </div>
 
-    <div id="hud">Lap: 0/5</div>
+    <div id="hud">LAP: 0/5</div>
     <canvas id="gameCanvas"></canvas>
-    <h1>OVAL CIRCUIT</h1>
 
-    <!-- UNIQUE RACING BACKGROUND MUSIC -->
     <audio id="bg-music" loop preload="auto">
         <source src="https://www.soundhelix.com/examples/mp3/SoundHelix-Song-4.mp3" type="audio/mpeg">
     </audio>
@@ -73,22 +69,24 @@
         const winOverlay = document.getElementById('win-overlay');
         const bgMusic = document.getElementById('bg-music');
         
-        // --- SENSORY MODE CHECK ---
         const lowSensoryMode = localStorage.getItem('lowSensory') === 'true';
+        const isMuted = localStorage.getItem('muteMusic') === 'true';
 
         let audioCtx, isStarted = false, gameState = "play";
-        let lastPressTime = 0, cooldown = 120;
+        let lastPressTime = 0, cooldown = 120, switchIsDown = false;
 
         let car = { angle: 0, speed: 0, boost: 1 };
-        let laps = 0;
-        let themeHue = 180; 
-        let ovalW, ovalH;
+        let laps = 0, themeHue = 50; // Gold start
+        let ovalW, ovalH, trackWidth = 100;
         let particles = [], lasers = [];
 
-        function startEngine() {
-            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-            bgMusic.volume = 0.2;
-            bgMusic.play();
+        function startEngine(e) {
+            if(e) e.stopPropagation();
+            try {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                if (!isMuted) { bgMusic.volume = 0.2; bgMusic.play(); }
+            } catch (err) {}
+            
             resize();
             document.getElementById('overlay').style.display = 'none';
             isStarted = true;
@@ -98,57 +96,62 @@
         function resize() {
             canvas.width = window.innerWidth;
             canvas.height = window.innerHeight;
-            ovalW = canvas.width * 0.35;
-            ovalH = canvas.height * 0.3;
+            ovalW = canvas.width * 0.38;
+            ovalH = canvas.height * 0.32;
         }
 
         function handleInput(event) {
-            if (event.target.id === 'home-button' || !isStarted || gameState === "win") return;
+            if (!isStarted || gameState === "win" || switchIsDown) return;
+            if (event.target.id === 'home-button' || event.target.className === 'btn-start') return;
             if (event.type === 'keydown' && event.code !== "Space" && event.code !== "Enter") return;
 
-            const now = Date.now();
-            if (now - lastPressTime < cooldown) return;
-            lastPressTime = now;
-
-            car.speed += 0.08; 
-            car.boost = 1.6;
+            switchIsDown = true;
+            car.speed += 0.085; 
+            car.boost = 1.7;
             
             playRevSound();
+            spawnTireSmoke();
             
-            // Only flash in High Sensory mode
             if (!lowSensoryMode) {
-                flashScreen(`hsla(${themeHue}, 100%, 50%, 0.3)`, 80);
+                flash.style.backgroundColor = `hsla(${themeHue}, 100%, 50%, 0.2)`;
+                flash.style.opacity = 1;
+                setTimeout(() => flash.style.opacity = 0, 80);
             }
             if (navigator.vibrate) navigator.vibrate(50);
         }
 
+        document.body.onkeyup = (e) => { if(e.code === "Space" || e.code === "Enter") switchIsDown = false; };
+        document.body.onmouseup = () => switchIsDown = false;
+
         function playRevSound() {
+            if(!audioCtx) return;
+            const now = audioCtx.currentTime;
             const osc = audioCtx.createOscillator();
             const gain = audioCtx.createGain();
             osc.connect(gain); gain.connect(audioCtx.destination);
-            const now = audioCtx.currentTime;
-            osc.frequency.setValueAtTime(100 + (car.speed * 500), now);
-            osc.frequency.exponentialRampToValueAtTime(400 + (car.speed * 500), now + 0.15);
+            osc.frequency.setValueAtTime(100 + (car.speed * 400), now);
+            osc.frequency.exponentialRampToValueAtTime(350 + (car.speed * 600), now + 0.2);
             gain.gain.setValueAtTime(0.3, now);
             gain.gain.exponentialRampToValueAtTime(0.01, now + 0.2);
             osc.start(); osc.stop(now + 0.2);
         }
 
-        function flashScreen(color, time) {
-            if (lowSensoryMode) return;
-            flash.style.backgroundColor = color;
-            flash.style.opacity = 1;
-            setTimeout(() => flash.style.opacity = 0, time);
+        function spawnTireSmoke() {
+            const cx = canvas.width/2 + Math.cos(car.angle) * ovalW;
+            const cy = canvas.height/2 + Math.sin(car.angle) * ovalH;
+            for(let i=0; i<5; i++) {
+                particles.push({ x: cx, y: cy, vx: (Math.random()-0.5)*5, vy: (Math.random()-0.5)*5, life: 1, color: "rgba(255,255,255,0.5)", s: 10 });
+            }
         }
 
         function gameLoop() {
-            ctx.fillStyle = 'black';
+            ctx.fillStyle = '#0a0a0a'; // Dark world
             ctx.fillRect(0, 0, canvas.width, canvas.height);
 
             if (gameState === "play") {
                 let oldAngle = car.angle;
                 car.angle += car.speed;
-                car.speed *= 0.97; 
+                car.speed *= 0.975; 
                 if (car.boost > 1) car.boost -= 0.05;
 
                 if (oldAngle < Math.PI * 2 && car.angle >= Math.PI * 2) {
@@ -158,7 +161,6 @@
             }
 
             drawTrack();
-            drawFinishLine();
             drawCar();
             drawEffects();
 
@@ -167,50 +169,50 @@
 
         function crossFinishLine() {
             laps++;
-            themeHue = (themeHue + 70) % 360; 
+            themeHue = (themeHue + 72) % 360; 
             hud.style.color = `hsl(${themeHue}, 100%, 50%)`;
             
             if (laps >= 5) {
                 winSequence();
             } else {
-                hud.innerText = `Lap: ${laps}/5`;
-                playWinSynth();
+                hud.innerText = `LAP: ${laps}/5`;
                 megaCelebration(canvas.width/2 + ovalW, canvas.height/2);
             }
         }
 
         function drawTrack() {
-            ctx.strokeStyle = `hsl(${themeHue}, 100%, 50%)`;
-            ctx.lineWidth = 80;
-            ctx.lineCap = "round";
-            ctx.beginPath();
-            ctx.ellipse(canvas.width/2, canvas.height/2, ovalW, ovalH, 0, 0, Math.PI * 2);
-            ctx.stroke();
+            const cx = canvas.width/2, cy = canvas.height/2;
 
-            ctx.strokeStyle = "black";
-            ctx.lineWidth = 60;
-            ctx.stroke();
+            // 1. Asphalt Base
+            ctx.strokeStyle = '#222';
+            ctx.lineWidth = trackWidth;
+            ctx.beginPath(); ctx.ellipse(cx, cy, ovalW, ovalH, 0, 0, Math.PI * 2); ctx.stroke();
+
+            // 2. Rumble Strips (Curbs)
+            ctx.setLineDash([20, 20]);
+            ctx.lineWidth = 10;
+            // Outer Curb
+            ctx.strokeStyle = '#ff0000';
+            ctx.beginPath(); ctx.ellipse(cx, cy, ovalW + 50, ovalH + 50, 0, 0, Math.PI * 2); ctx.stroke();
+            ctx.strokeStyle = '#ffffff';
+            ctx.lineDashOffset = 20;
+            ctx.beginPath(); ctx.ellipse(cx, cy, ovalW + 50, ovalH + 50, 0, 0, Math.PI * 2); ctx.stroke();
             
-            ctx.strokeStyle = `hsl(${themeHue}, 100%, 80%)`;
+            // 3. Center Dash Line
+            ctx.setLineDash([30, 50]);
+            ctx.strokeStyle = 'rgba(255,255,255,0.3)';
             ctx.lineWidth = 4;
-            ctx.stroke();
-        }
+            ctx.beginPath(); ctx.ellipse(cx, cy, ovalW, ovalH, 0, 0, Math.PI * 2); ctx.stroke();
+            ctx.setLineDash([]);
 
-        function drawFinishLine() {
-            const fx = canvas.width/2 + ovalW;
-            const fy = canvas.height/2;
-            const size = 80;
-            ctx.save();
-            ctx.translate(fx, fy);
-            const rows = 4; const cols = 2;
-            const step = size / rows;
-            for(let r=0; r<rows; r++) {
-                for(let c=0; c<cols; c++) {
-                    ctx.fillStyle = (r + c) % 2 === 0 ? "white" : "black";
-                    ctx.fillRect(c * (size/2) - size/2, r * step - size/2, size/2, step);
+            // 4. Finish Line (Checkered at 3 o'clock)
+            const fx = cx + ovalW, fy = cy, fz = 100;
+            for(let r=0; r<5; r++) {
+                for(let c=0; c<2; c++) {
+                    ctx.fillStyle = (r+c)%2===0 ? "#FFF" : "#000";
+                    ctx.fillRect(fx + (c*20) - 20, fy + (r*20) - 50, 20, 20);
                 }
             }
-            ctx.restore();
         }
 
         function drawCar() {
@@ -225,15 +227,24 @@
             ctx.rotate(rotation);
             ctx.scale(car.boost, car.boost);
 
+            // Exhaust Flame (Visible when speeding)
+            if (car.speed > 0.01) {
+                ctx.fillStyle = "orange";
+                ctx.beginPath(); ctx.moveTo(-35, -10); ctx.lineTo(-60 - (car.speed*100), 0); ctx.lineTo(-35, 10); ctx.fill();
+            }
+
+            // Car Body
             ctx.fillStyle = `hsl(${themeHue}, 100%, 50%)`;
             ctx.shadowBlur = 15; ctx.shadowColor = "white";
-            ctx.beginPath(); ctx.roundRect(-30, -20, 60, 40, 10); ctx.fill();
+            ctx.beginPath(); ctx.roundRect(-30, -20, 65, 40, 10); ctx.fill();
             
+            // Cockpit
             ctx.fillStyle = "black";
-            ctx.fillRect(-10, -12, 25, 24);
+            ctx.fillRect(-5, -14, 25, 28);
 
+            // Spoiler
             ctx.fillStyle = `hsl(${themeHue}, 100%, 30%)`;
-            ctx.fillRect(-35, -18, 10, 36);
+            ctx.fillRect(-35, -22, 12, 44);
 
             ctx.restore();
             ctx.shadowBlur = 0;
@@ -242,58 +253,33 @@
         function winSequence() {
             gameState = "win";
             winOverlay.style.display = 'flex';
-            document.getElementById('win-title').style.color = `hsl(${themeHue}, 100%, 50%)`;
-            
             let winTimer = setInterval(() => {
-                megaCelebration(Math.random()*canvas.width, Math.random()*canvas.height);
-                playWinSynth();
+                if(!lowSensoryMode) megaCelebration(Math.random()*canvas.width, Math.random()*canvas.height);
             }, 400);
 
             setTimeout(() => {
                 clearInterval(winTimer);
-                laps = 0;
-                hud.innerText = `Lap: 0/5`;
-                car.angle = 0;
-                car.speed = 0;
-                gameState = "play";
-                winOverlay.style.display = 'none';
+                laps = 0; hud.innerText = `LAP: 0/5`; car.angle = 0; car.speed = 0;
+                gameState = "play"; winOverlay.style.display = 'none';
             }, 6000);
         }
 
         function megaCelebration(x, y) {
-            if (lowSensoryMode) return; 
-            flashScreen("white", 150);
-            for(let i=0; i<10; i++) lasers.push({x: x, y: y, angle: Math.random() * Math.PI * 2, life: 1});
-            for(let i=0; i<25; i++) particles.push({
-                x: x, y: y, vx: (Math.random()-0.5) * 20, vy: (Math.random()-0.5) * 20, 
-                life: 1, color: `hsl(${Math.random()*360}, 100%, 50%)`
-            });
-        }
-
-        function playWinSynth() {
-            if(!audioCtx) return;
-            const osc = audioCtx.createOscillator();
-            const gain = audioCtx.createGain();
-            osc.connect(gain); gain.connect(audioCtx.destination);
-            osc.type = 'square';
-            osc.frequency.setValueAtTime(300, audioCtx.currentTime);
-            osc.frequency.exponentialRampToValueAtTime(900, audioCtx.currentTime + 0.4);
-            gain.gain.setValueAtTime(0.2, audioCtx.currentTime);
-            gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.4);
-            osc.start(); osc.stop(audioCtx.currentTime + 0.4);
+            flash.style.backgroundColor = "white"; flash.style.opacity = 0.3;
+            setTimeout(() => flash.style.opacity = 0, 100);
+            for(let i=0; i<8; i++) lasers.push({x, y, angle: Math.random()*Math.PI*2, life: 1});
+            for(let i=0; i<20; i++) particles.push({ x, y, vx: (Math.random()-0.5)*20, vy: (Math.random()-0.5)*20, life: 1, color: `hsl(${Math.random()*360}, 100%, 50%)`, s: 12 });
         }
 
         function drawEffects() {
             lasers.forEach(l => {
-                ctx.strokeStyle = `hsla(${themeHue}, 100%, 70%, ${l.life})`;
-                ctx.lineWidth = 15 * l.life;
-                ctx.beginPath(); ctx.moveTo(l.x, l.y);
-                ctx.lineTo(l.x + Math.cos(l.angle) * 2000, l.lineTo + Math.sin(l.angle) * 2000); ctx.stroke();
+                ctx.strokeStyle = `hsla(${themeHue}, 100%, 70%, ${l.life})`; ctx.lineWidth = 15*l.life;
+                ctx.beginPath(); ctx.moveTo(l.x, l.y); ctx.lineTo(l.x+Math.cos(l.angle)*2000, l.y+Math.sin(l.angle)*2000); ctx.stroke();
                 l.life -= 0.03;
             });
             particles.forEach(p => {
                 ctx.fillStyle = p.color; ctx.globalAlpha = p.life;
-                ctx.beginPath(); ctx.arc(p.x, p.y, 8, 0, Math.PI*2); ctx.fill();
+                ctx.beginPath(); ctx.arc(p.x, p.y, p.s, 0, Math.PI*2); ctx.fill();
                 p.x += p.vx; p.y += p.vy; p.life -= 0.02;
             });
             lasers = lasers.filter(l => l.life > 0);
