@@ -92,6 +92,8 @@
             document.getElementById('overlay').style.display = 'none';
             isStarted = true;
         }
+        if (localStorage.getItem('muteMusic') === 'true') bgMusic.volume = 0;
+}
 
         // --- SYNTH BUBBLE SOUNDS ---
         function playPopSound() {
