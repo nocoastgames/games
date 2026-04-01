@@ -3,176 +3,235 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Interaction Hub - Learning Roadmap</title>
+    <title>Pro Interaction Hub</title>
     <style>
         :root {
+            --bg: #050505; --card-bg: #111;
             --p1: #00FFFF; --p2: #FF00FF; --p3: #FF4500; 
-            --p4: #FFD700; --p5: #00FF00; --p6: #FFFFFF; --p7: #CCFF00;
+            --p4: #FFD700; --p5: #00FF00; --p6: #FFFFFF;
         }
-        body { background-color: #000; color: white; font-family: sans-serif; margin: 0; padding: 20px; display: flex; flex-direction: column; align-items: center; min-height: 100vh; }
-        
-        h1 { color: #fff; font-size: clamp(28px, 5vw, 48px); text-align: center; margin-bottom: 5px; text-shadow: 0 0 15px rgba(255,255,255,0.2); }
-        .subtitle { color: #888; margin-bottom: 30px; font-size: 18px; text-align: center; }
-
-        /* SETTINGS CONTROLS */
-        .settings-bar { 
-            background: #111; padding: 20px 30px; border-radius: 30px; 
-            margin-bottom: 40px; border: 2px solid #444; 
-            display: flex; flex-wrap: wrap; justify-content: center; gap: 30px; 
-            box-shadow: 0 5px 15px rgba(0,0,0,0.5); 
+        body { 
+            background-color: var(--bg); color: white; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+            margin: 0; display: flex; min-height: 100vh; overflow-x: hidden;
         }
-        .control-group { display: flex; align-items: center; gap: 15px; }
-        .control-label { font-weight: bold; color: #bbb; text-transform: uppercase; font-size: 13px; letter-spacing: 1px; }
+
+        /* --- SIDEBAR --- */
+        #sidebar {
+            width: 300px; background: #0a0a0a; border-right: 2px solid #222;
+            padding: 30px 20px; display: flex; flex-direction: column; gap: 30px;
+            position: sticky; top: 0; height: 100vh; box-sizing: border-box;
+        }
+        .sidebar-title { font-size: 12px; color: #555; text-transform: uppercase; letter-spacing: 2px; font-weight: bold; }
         
-        .toggle-btn { padding: 12px 24px; border-radius: 15px; border: none; cursor: pointer; font-weight: bold; font-size: 14px; transition: 0.3s; min-width: 160px; }
-        .on { background: #ff4444; color: white; box-shadow: 0 0 10px #ff4444; }
-        .off { background: #44ff44; color: black; box-shadow: 0 0 10px #44ff44; }
+        /* --- MAIN CONTENT --- */
+        #main-content { flex-grow: 1; padding: 40px; max-width: 1400px; }
+        h1 { font-size: 42px; margin: 0; background: linear-gradient(to right, #fff, #666); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .subtitle { color: #555; margin-bottom: 50px; font-size: 18px; }
 
-        /* PHASE SECTIONS */
-        .phase-section { width: 100%; max-width: 1200px; margin-bottom: 50px; border-left: 6px solid #333; padding-left: 25px; }
-        .phase-header { margin-bottom: 25px; }
-        .phase-title { font-size: 26px; font-weight: bold; text-transform: uppercase; letter-spacing: 2px; }
-        .phase-desc { color: #888; font-size: 17px; margin-top: 5px; line-height: 1.4; }
+        /* --- TOGGLE BUTTONS --- */
+        .control-group { display: flex; flex-direction: column; gap: 10px; }
+        .toggle-btn { 
+            padding: 15px; border-radius: 12px; border: 1px solid #333; 
+            cursor: pointer; font-weight: bold; transition: 0.3s; text-align: left;
+            background: #111; color: #888;
+        }
+        .toggle-btn.active-green { background: rgba(68, 255, 68, 0.1); color: #44ff44; border-color: #44ff44; }
+        .toggle-btn.active-red { background: rgba(255, 68, 68, 0.1); color: #ff4444; border-color: #ff4444; }
 
-        .game-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 20px; }
+        /* --- STATS BOX --- */
+        .stats-card { background: #1a1a1a; padding: 20px; border-radius: 20px; border: 1px solid #333; }
+        .stat-val { font-size: 24px; font-weight: bold; color: var(--p5); }
+        .stat-label { font-size: 12px; color: #666; text-transform: uppercase; }
 
-        /* CARDS */
-        .game-card { background: #111; border-radius: 30px; padding: 30px 20px; text-align: center; text-decoration: none; transition: 0.25s; border: 4px solid #222; display: flex; flex-direction: column; align-items: center; }
-        .game-card:hover { transform: scale(1.03); background: #1a1a1a; }
-        .game-icon { font-size: 70px; margin-bottom: 12px; }
-        .game-name { font-size: 20px; font-weight: bold; color: #fff; }
-        .card-desc { font-size: 14px; color: #666; margin-top: 8px; }
+        /* --- PHASE SECTIONS --- */
+        .phase-container { margin-bottom: 60px; }
+        .phase-header { border-bottom: 1px solid #222; padding-bottom: 10px; margin-bottom: 25px; display: flex; align-items: baseline; gap: 15px; }
+        .phase-num { font-size: 24px; font-weight: bold; }
+        .phase-desc { color: #666; font-size: 16px; }
 
-        /* PHASE COLORS */
-        .ph1 { border-color: var(--p1); }
-        .ph2 { border-color: var(--p2); }
-        .ph3 { border-color: var(--p3); }
-        .ph4 { border-color: var(--p4); }
-        .ph5 { border-color: var(--p5); }
-        .ph6 { border-color: var(--p6); }
+        .game-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 20px; }
 
-        footer { margin-top: 60px; padding: 40px 20px; text-align: center; border-top: 1px solid #222; width: 100%; max-width: 900px; }
-        .kofi-button { background-color: #29abe0; color: white; padding: 15px 30px; text-decoration: none; border-radius: 20px; font-weight: bold; display: inline-block; font-size: 18px; }
+        /* --- GAME CARDS --- */
+        .game-card { 
+            background: var(--card-bg); border-radius: 24px; padding: 30px 20px; 
+            text-decoration: none; border: 2px solid #222; transition: 0.3s;
+            display: flex; flex-direction: column; align-items: center; position: relative;
+        }
+        .game-card:hover { transform: translateY(-5px); background: #1a1a1a; border-color: #444; }
+        .game-icon { font-size: 50px; margin-bottom: 15px; }
+        .game-name { font-size: 18px; font-weight: bold; color: #fff; margin-bottom: 5px; }
+        .game-goal { font-size: 11px; background: #222; color: #888; padding: 4px 10px; border-radius: 20px; text-transform: uppercase; }
+
+        /* PHASE BORDERS */
+        .b1 { border-bottom: 4px solid var(--p1); }
+        .b2 { border-bottom: 4px solid var(--p2); }
+        .b3 { border-bottom: 4px solid var(--p3); }
+        .b4 { border-bottom: 4px solid var(--p4); }
+        .b5 { border-bottom: 4px solid var(--p5); }
+        .b6 { border-bottom: 4px solid var(--p6); }
+
+        .kofi-sidebar { margin-top: auto; }
+        .kofi-button { background: #29abe0; color: white; padding: 12px; border-radius: 12px; text-decoration: none; font-weight: bold; display: block; text-align: center; }
+
+        @media (max-width: 900px) {
+            body { flex-direction: column; }
+            #sidebar { width: 100%; height: auto; position: relative; }
+        }
     </style>
 </head>
 <body>
 
-    <h1>Interaction Hub</h1>
-    <p class="subtitle">Developmental Roadmap for One-Button Users</p>
-
-    <div class="settings-bar">
+    <aside id="sidebar">
+        <div class="sidebar-title">Global Settings</div>
+        
         <div class="control-group">
-            <span class="control-label">Visuals:</span>
-            <button id="sensoryToggle" class="toggle-btn off" onclick="toggleSensory()">HIGH (Standard)</button>
+            <span class="sidebar-title">Visual Mode</span>
+            <button id="sensoryToggle" class="toggle-btn" onclick="toggleSensory()">HIGH STIM</button>
         </div>
+
         <div class="control-group">
-            <span class="control-label">Music:</span>
-            <button id="musicToggle" class="toggle-btn off" onclick="toggleMusic()">MUSIC ON</button>
+            <span class="sidebar-title">Audio Mode</span>
+            <button id="musicToggle" class="toggle-btn" onclick="toggleMusic()">MUSIC ON</button>
         </div>
-    </div>
 
-    <!-- PHASE 1 -->
-    <div class="phase-section" style="border-color: var(--p1);">
-        <div class="phase-header">
-            <div class="phase-title" style="color: var(--p1);">Phase 1: Sensory Agency</div>
-            <div class="phase-desc">Understand "I press, and something happens." Pure cause-and-effect.</div>
+        <div class="sidebar-title">Session Progress</div>
+        <div class="stats-card">
+            <div>
+                <span id="total-success" class="stat-val">0</span><br>
+                <span class="stat-label">Total Successes</span>
+            </div>
+            <div style="margin-top: 15px;">
+                <span id="total-errors" class="stat-val" style="color: #ff4444;">0</span><br>
+                <span class="stat-label">Total Mistakes</span>
+            </div>
+            <button onclick="resetStats()" style="margin-top:15px; background:none; border:none; color:#444; cursor:pointer; font-size:10px; text-transform:uppercase;">Reset Stats</button>
         </div>
-        <div class="game-grid">
-            <a href="burst/index.html" class="game-card ph1"><span class="game-icon">💥</span><span class="game-name">Neon Burst</span><span class="card-desc">Massive supernova explosions.</span></a>
-            <a href="dj-party/index.html" class="game-card ph1"><span class="game-icon">🎧</span><span class="game-name">DJ Party</span><span class="card-desc">Techno beats & pulsing speakers.</span></a>
-            <a href="bubbles/index.html" class="game-card ph1"><span class="game-icon">🫧</span><span class="game-name">Bubble Pop</span><span class="card-desc">Calm, iridescent magic.</span></a>
-            <a href="canvas/index.html" class="game-card ph1"><span class="game-icon">🎨</span><span class="game-name">Neon Canvas</span><span class="card-desc">Splash paint on a black wall.</span></a>
-        </div>
-    </div>
 
-    <!-- PHASE 2 -->
-    <div class="phase-section" style="border-color: var(--p2);">
-        <div class="phase-header">
-            <div class="phase-title" style="color: var(--p2);">Phase 2: Sustained Action</div>
-            <div class="phase-desc">Repeated pressing results in continuous movement or high-speed travel.</div>
+        <div class="kofi-sidebar">
+            <a href="https://ko-fi.com/nocoast" target="_blank" class="kofi-button">☕ Ko-fi Support</a>
         </div>
-        <div class="game-grid">
-            <a href="tunnel/index.html" class="game-card ph2"><span class="game-icon">🌌</span><span class="game-name">Star Tunnel</span><span class="card-desc">Cinematic hyperdrive effect.</span></a>
-            <a href="snake/index.html" class="game-card ph2"><span class="game-icon">🐍</span><span class="game-name">Mega Snake</span><span class="card-desc">Lunge toward the glowing apples.</span></a>
-            <a href="racer/index.html" class="game-card ph2"><span class="game-icon">🏎️</span><span class="game-name">Neon Racer</span><span class="card-desc">Pump the engine for a lap trophy.</span></a>
-        </div>
-    </div>
+    </aside>
 
-    <!-- PHASE 3 -->
-    <div class="phase-section" style="border-color: var(--p3);">
-        <div class="phase-header">
-            <div class="phase-title" style="color: var(--p3);">Phase 3: Persistence</div>
-            <div class="phase-desc">Following a multi-step sequence to reach a big finale.</div>
-        </div>
-        <div class="game-grid">
-            <a href="rocket/index.html" class="game-card ph3"><span class="game-icon">🚀</span><span class="game-name">Mega Rocket</span><span class="card-desc">Assemble and launch to the moon.</span></a>
-            <a href="monster/index.html" class="game-card ph3"><span class="game-icon">👾</span><span class="game-name">Monster Feed</span><span class="card-desc">Feed a goofy monster 10 snacks.</span></a>
-        </div>
-    </div>
+    <main id="main-content">
+        <h1>Interaction Hub</h1>
+        <p class="subtitle">Evidence-based developmental roadmap for one-button agency.</p>
 
-    <!-- PHASE 4 -->
-    <div class="phase-section" style="border-color: var(--p4);">
-        <div class="phase-header">
-            <div class="phase-title" style="color: var(--p4);">Phase 4: Timing</div>
-            <div class="phase-desc">Waiting for the right moment. Teaches inhibitory control.</div>
-        </div>
-        <div class="game-grid">
-            <a href="log-hop/index.html" class="game-card ph4"><span class="game-icon">🪵</span><span class="game-name">Mega Log Hop</span><span class="card-desc">Wait for a log to jump the river.</span></a>
-            <a href="slam/index.html" class="game-card ph4"><span class="game-icon">🔔</span><span class="game-name">Neon Slam</span><span class="card-desc">Hit the target in the carnival meter.</span></a>
-        </div>
-    </div>
+        <!-- PHASE 1 -->
+        <section class="phase-container">
+            <div class="phase-header">
+                <span class="phase-num" style="color: var(--p1)">PHASE 1</span>
+                <span class="phase-desc">Sensory Agency: I press, something happens.</span>
+            </div>
+            <div class="game-grid">
+                <a href="burst/index.html" class="game-card b1"><span class="game-icon">💥</span><span class="game-name">Neon Burst</span><span class="game-goal">Immediate Impact</span></a>
+                <a href="dj-party/index.html" class="game-card b1"><span class="game-icon">🎧</span><span class="game-name">DJ Party</span><span class="game-goal">Rhythmic Agency</span></a>
+                <a href="bubbles/index.html" class="game-card b1"><span class="game-icon">🫧</span><span class="game-name">Bubble Pop</span><span class="game-goal">Visual Tracking</span></a>
+                <a href="canvas/index.html" class="game-card b1"><span class="game-icon">🎨</span><span class="game-name">Neon Canvas</span><span class="game-goal">Creative Impact</span></a>
+            </div>
+        </section>
 
-    <!-- PHASE 5 -->
-    <div class="phase-section" style="border-color: var(--p5);">
-        <div class="phase-header">
-            <div class="phase-title" style="color: var(--p5);">Phase 5: Visual Matching</div>
-            <div class="phase-desc">Intentional selection. Scanned selection of matching icons.</div>
-        </div>
-        <div class="game-grid">
-            <a href="match/index.html" class="game-card ph5"><span class="game-icon">🎯</span><span class="game-name">Target Match</span><span class="card-desc">Wait and tap the matching item.</span></a>
-        </div>
-    </div>
+        <!-- PHASE 2 -->
+        <section class="phase-container">
+            <div class="phase-header">
+                <span class="phase-num" style="color: var(--p2)">PHASE 2</span>
+                <span class="phase-desc">Sustained Action: Pressing moves things through space.</span>
+            </div>
+            <div class="game-grid">
+                <a href="tunnel/index.html" class="game-card b2"><span class="game-icon">🌌</span><span class="game-name">Star Tunnel</span><span class="game-goal">Optical Flow</span></a>
+                <a href="snake/index.html" class="game-card b2"><span class="game-icon">🐍</span><span class="game-name">Mega Snake</span><span class="game-goal">Directed Motion</span></a>
+                <a href="racer/index.html" class="game-card b2"><span class="game-icon">🏎️</span><span class="game-name">Neon Racer</span><span class="game-goal">Momentum</span></a>
+            </div>
+        </section>
 
-    <!-- PHASE 6 -->
-    <div class="phase-section" style="border-color: var(--p6);">
-        <div class="phase-header">
-            <div class="phase-title" style="color: var(--p6);">Phase 6: Logic & Categorization</div>
-            <div class="phase-desc">Identify logical groups. Sort by size, category, or quantity.</div>
-        </div>
-        <div class="game-grid">
-            <a href="sort/index.html" class="game-card ph6"><span class="game-icon">📦</span><span class="game-name">Logic Sort</span><span class="card-desc">Sort items based on logical groups.</span></a>
-            <a href="math/index.html" class="game-card ph6"><span class="game-icon">🔢</span><span class="game-name">Mega Math</span><span class="card-desc">Identify more than and less than.</span></a>
-        </div>
-    </div>
+        <!-- PHASE 3 -->
+        <section class="phase-container">
+            <div class="phase-header">
+                <span class="phase-num" style="color: var(--p3)">PHASE 3</span>
+                <span class="phase-desc">Persistence: Multi-step build to a finale.</span>
+            </div>
+            <div class="game-grid">
+                <a href="rocket/index.html" class="game-card b3"><span class="game-icon">🚀</span><span class="game-name">Mega Rocket</span><span class="game-goal">Sequencing</span></a>
+                <a href="monster/index.html" class="game-card b3"><span class="game-icon">👾</span><span class="game-name">Monster Feed</span><span class="game-goal">Task Completion</span></a>
+            </div>
+        </section>
 
-    <footer>
-        <a href="https://ko-fi.com/nocoast" target="_blank" class="kofi-button">☕ Support this project on Ko-fi</a>
-        <p style="color:#444; font-size: 12px; margin-top:20px;">Released under the MIT License.</p>
-    </footer>
+        <!-- PHASE 4 -->
+        <section class="phase-container">
+            <div class="phase-header">
+                <span class="phase-num" style="color: var(--p4)">PHASE 4</span>
+                <span class="phase-desc">Timing: Inhibiting the urge to press until ready.</span>
+            </div>
+            <div class="game-grid">
+                <a href="log-hop/index.html" class="game-card b4"><span class="game-icon">🪵</span><span class="game-name">Mega Log Hop</span><span class="game-goal">Wait-and-Act</span></a>
+                <a href="slam/index.html" class="game-card b4"><span class="game-icon">🔔</span><span class="game-name">Neon Slam</span><span class="game-goal">Reaction Time</span></a>
+            </div>
+        </section>
+
+        <!-- PHASE 5 -->
+        <section class="phase-container">
+            <div class="phase-header">
+                <span class="phase-num" style="color: var(--p5)">PHASE 5</span>
+                <span class="phase-desc">Choice Making: Scanning and Intentionality.</span>
+            </div>
+            <div class="game-grid">
+                <a href="match/index.html" class="game-card b5"><span class="game-icon">🎯</span><span class="game-name">Target Match</span><span class="game-goal">Visual Discrimination</span></a>
+            </div>
+        </section>
+
+        <!-- PHASE 6 -->
+        <section class="phase-container">
+            <div class="phase-header">
+                <span class="phase-num" style="color: var(--p6)">PHASE 6</span>
+                <span class="phase-desc">Logic: Categories and Quantities.</span>
+            </div>
+            <div class="game-grid">
+                <a href="sort/index.html" class="game-card b6"><span class="game-icon">📦</span><span class="game-name">Logic Sort</span><span class="game-goal">Categorization</span></a>
+                <a href="math/index.html" class="game-card b6"><span class="game-icon">🔢</span><span class="game-name">Mega Math</span><span class="game-goal">Quantity Comparison</span></a>
+            </div>
+        </section>
+    </main>
 
     <script>
         function updateSensoryButton() {
             const isLow = localStorage.getItem('lowSensory') === 'true';
             const btn = document.getElementById('sensoryToggle');
-            if (isLow) { btn.innerText = "LOW (Safe Mode)"; btn.className = "toggle-btn on"; }
-            else { btn.innerText = "HIGH (Standard)"; btn.className = "toggle-btn off"; }
+            btn.innerText = isLow ? "LOW STIM (Safe)" : "HIGH STIM (Strobes)";
+            btn.className = isLow ? "toggle-btn active-green" : "toggle-btn active-red";
         }
         function toggleSensory() {
             localStorage.setItem('lowSensory', localStorage.getItem('lowSensory') !== 'true');
             updateSensoryButton();
         }
+
         function updateMusicButton() {
             const isMuted = localStorage.getItem('muteMusic') === 'true';
             const btn = document.getElementById('musicToggle');
-            if (isMuted) { btn.innerText = "MUSIC OFF"; btn.className = "toggle-btn on"; }
-            else { btn.innerText = "MUSIC ON"; btn.className = "toggle-btn off"; }
+            btn.innerText = isMuted ? "MUSIC OFF" : "MUSIC ON";
+            btn.className = isMuted ? "toggle-btn active-red" : "toggle-btn active-green";
         }
         function toggleMusic() {
             localStorage.setItem('muteMusic', localStorage.getItem('muteMusic') !== 'true');
             updateMusicButton();
         }
+
+        function updateStats() {
+            document.getElementById('total-success').innerText = localStorage.getItem('statSuccess') || 0;
+            document.getElementById('total-errors').innerText = localStorage.getItem('statErrors') || 0;
+        }
+
+        function resetStats() {
+            localStorage.setItem('statSuccess', 0);
+            localStorage.setItem('statErrors', 0);
+            updateStats();
+        }
+
+        // Initialize
         updateSensoryButton();
         updateMusicButton();
+        updateStats();
+
+        // Refresh stats when returning to the tab
+        window.onfocus = updateStats;
     </script>
 </body>
 </html>
