@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>MEGA LOG HOP - DEEP WATER</title>
+    <title>MEGA LOG HOP - TEACHER EDITION</title>
     <style>
         body { 
             background-color: #000; margin: 0; overflow: hidden; 
@@ -20,16 +20,27 @@
         }
         #home-button:hover { opacity: 1.0; background: rgba(255, 255, 255, 0.3); }
 
+        /* TEACHER SETTINGS UI */
         #overlay {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: #000; color: #FF8C00; display: flex; 
+            background: #000; color: #FFF; display: flex; 
             flex-direction: column; justify-content: center; align-items: center; 
-            z-index: 100; cursor: pointer; text-align: center;
+            z-index: 100; text-align: center;
         }
-        #start-btn {
-            font-size: 50px; padding: 30px 60px; border: 8px solid #FF8C00;
-            background: transparent; color: #FF8C00; font-weight: bold;
-            border-radius: 20px; box-shadow: 0 0 30px #FF8C00;
+        .settings-box {
+            background: #1a1a1a; padding: 30px; border-radius: 30px;
+            border: 4px solid #FF8C00; max-width: 500px;
+        }
+        .color-opt {
+            width: 50px; height: 50px; border-radius: 50%; display: inline-block;
+            margin: 10px; cursor: pointer; border: 4px solid transparent;
+        }
+        .color-opt.active { border-color: white; transform: scale(1.2); }
+        
+        .btn-start {
+            font-size: 40px; padding: 20px 50px; border: 6px solid #00FF00;
+            background: transparent; color: #00FF00; font-weight: bold;
+            border-radius: 20px; cursor: pointer; margin-top: 30px;
         }
 
         canvas { display: block; z-index: 10; }
@@ -42,46 +53,99 @@
     <a id="home-button" href="../index.html">🏠</a>
     <div id="flash"></div>
 
-    <div id="overlay" onclick="startEngine()">
-        <div id="start-btn">START RIVER HOP</div>
-        <p style="margin-top: 20px; color: white; font-size: 20px;">(Deep Water & Sparkles Mode)</p>
+    <div id="overlay">
+        <div class="settings-box">
+            <h2 style="color: #FF8C00;">TEACHER SETTINGS</h2>
+            
+            <p>1. Target Color (Frog Color):</p>
+            <div id="target-colors"></div>
+
+            <p>2. Number of Distractor Colors:</p>
+            <div id="difficulty-opts">
+                <button onclick="setDifficulty(1)">1</button>
+                <button onclick="setDifficulty(2)">2</button>
+                <button onclick="setDifficulty(3)">3</button>
+                <button onclick="setDifficulty(4)">4</button>
+            </div>
+
+            <button class="btn-start" onclick="startEngine()">START GAME</button>
+        </div>
     </div>
 
     <canvas id="gameCanvas"></canvas>
-    <h1>RIVER JOURNEY</h1>
+    <h1 id="game-title">MATCHING MODE</h1>
 
     <script>
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
         const flash = document.getElementById('flash');
         
-        // --- SENSORY & CONFIG ---
         const lowSensoryMode = localStorage.getItem('lowSensory') === 'true';
         let audioCtx, isStarted = false;
-        let lastPressTime = 0, cooldown = 300;
+        let lastPressTime = 0, cooldown = 400;
+
+        // --- GAME STATE & SETTINGS ---
+        const colorPalette = [
+            { name: 'Lime', hue: 120 },
+            { name: 'Cyan', hue: 180 },
+            { name: 'Magenta', hue: 300 },
+            { name: 'Orange', hue: 30 },
+            { name: 'Red', hue: 0 }
+        ];
+
+        let targetHue = 120; // Default Lime
+        let distractorCount = 2;
+        let activeHues = [];
 
         let riverLanes = 3;
         let steps = []; 
-        let frog = { stepIdx: 0, x: 0, y: 0, targetX: 0, isJumping: false, jumpT: 0 };
+        let frog = { stepIdx: 0, x: 0, y: 0, targetX: 0, isJumping: false, jumpT: 0, isBouncing: false };
         let laneData = []; 
         let gameState = "play";
         let bankWidth = 180, sandbarWidth = 80, laneWidth;
+        let sparkles = [];
 
-        let particles = [], lasers = [], sparkles = [];
+        // --- INITIALIZE UI ---
+        const targetContainer = document.getElementById('target-colors');
+        colorPalette.forEach(c => {
+            let div = document.createElement('div');
+            div.className = 'color-opt';
+            div.style.backgroundColor = `hsl(${c.hue}, 100%, 50%)`;
+            div.onclick = () => {
+                targetHue = c.hue;
+                document.querySelectorAll('.color-opt').forEach(el => el.classList.remove('active'));
+                div.classList.add('active');
+            };
+            if(c.hue === 120) div.classList.add('active');
+            targetContainer.appendChild(div);
+        });
 
+        function setDifficulty(n) {
+            distractorCount = n;
+            document.querySelectorAll('#difficulty-opts button').forEach((b, i) => {
+                b.style.backgroundColor = (i+1 === n) ? '#FF8C00' : '#333';
+            });
+        }
+        setDifficulty(2);
+
+        // --- CORE ENGINE ---
         function startEngine() {
             audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            
+            // Pick distractor colors (excluding target)
+            activeHues = [targetHue];
+            let pool = colorPalette.filter(p => p.hue !== targetHue);
+            for(let i=0; i<distractorCount; i++) {
+                activeHues.push(pool[i].hue);
+            }
+
             resize();
             resetGame();
             
-            // Create persistent sparkles for the water
             for(let i=0; i<60; i++) {
                 sparkles.push({
-                    x: Math.random() * canvas.width,
-                    y: Math.random() * canvas.height,
-                    s: Math.random() * 3 + 1,
-                    alpha: Math.random(),
-                    v: Math.random() * 0.02 + 0.01
+                    x: Math.random() * canvas.width, y: Math.random() * canvas.height,
+                    s: Math.random() * 3 + 1, alpha: Math.random(), v: Math.random() * 0.02 + 0.01
                 });
             }
 
@@ -116,24 +180,21 @@
             frog.x = steps[0].x;
             frog.y = canvas.height / 2;
             frog.isJumping = false;
+            frog.isBouncing = false;
             laneData = [];
             const logH = canvas.height * 0.55; 
             const gapH = 120; 
-            const safeHues = [0, 30, 200, 280, 320]; 
 
             for(let i=0; i<riverLanes; i++) {
                 let dir = (i % 2 === 0) ? 1 : -1;
-                let speed = 0.8 + Math.random() * 0.5;
+                let speed = 0.7 + Math.random() * 0.4;
                 let logsInLane = [];
                 let currentY = -logH;
                 while (currentY < canvas.height + logH) {
-                    logsInLane.push({ y: currentY, h: logH });
+                    logsInLane.push({ y: currentY, h: logH, hue: activeHues[Math.floor(Math.random()*activeHues.length)] });
                     currentY += logH + gapH;
                 }
-                laneData.push({
-                    laneIdx: i, speed: speed, dir: dir, logs: logsInLane,
-                    logH: logH, gapH: gapH, color: `hsl(${safeHues[i % safeHues.length]}, 100%, 50%)`
-                });
+                laneData.push({ laneIdx: i, speed: speed, dir: dir, logs: logsInLane, logH: logH, gapH: gapH });
             }
         }
 
@@ -143,17 +204,27 @@
             const now = Date.now();
             if (now - lastPressTime < cooldown) return;
             lastPressTime = now;
-            jump();
+            jumpForward();
         }
 
-        function jump() {
+        function jumpForward() {
             frog.isJumping = true;
+            frog.isBouncing = false;
             frog.jumpT = 0;
             frog.oldX = frog.x;
-            frog.oldY = frog.y; 
             frog.stepIdx++;
             frog.targetX = steps[frog.stepIdx].x;
             playSynth('jump', 0.2);
+        }
+
+        function bounceBack() {
+            frog.isJumping = true;
+            frog.isBouncing = true;
+            frog.jumpT = 0;
+            frog.oldX = frog.x;
+            frog.stepIdx--; // Go back
+            frog.targetX = steps[frog.stepIdx].x;
+            playSynth('bounce', 0.3);
         }
 
         function playSynth(type, vol) {
@@ -165,10 +236,11 @@
                 osc.frequency.setValueAtTime(300, now); osc.frequency.exponentialRampToValueAtTime(600, now + 0.1);
                 gain.gain.setValueAtTime(vol, now); gain.gain.exponentialRampToValueAtTime(0.01, now + 0.1);
                 osc.start(); osc.stop(now + 0.1);
-            } else if (type === 'splash') {
-                osc.type = 'sawtooth'; osc.frequency.setValueAtTime(80, now);
-                gain.gain.setValueAtTime(vol, now); gain.gain.exponentialRampToValueAtTime(0.01, now + 0.4);
-                osc.start(); osc.stop(now + 0.4);
+            } else if (type === 'bounce') {
+                osc.type = 'square'; osc.frequency.setValueAtTime(400, now);
+                osc.frequency.exponentialRampToValueAtTime(100, now + 0.3);
+                gain.gain.setValueAtTime(vol, now); gain.gain.exponentialRampToValueAtTime(0.01, now + 0.3);
+                osc.start(); osc.stop(now + 0.3);
             } else if (type === 'win') {
                 osc.type = 'square'; osc.frequency.setValueAtTime(400, now);
                 osc.frequency.exponentialRampToValueAtTime(1200, now + 0.6);
@@ -178,24 +250,22 @@
         }
 
         function gameLoop() {
-            // --- DRAW DARK BLUE WATER ---
-            ctx.fillStyle = '#050525';
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-            // --- DRAW SPARKLES ---
+            ctx.fillStyle = '#050525'; ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // Draw Sparkles (Only between banks)
             ctx.fillStyle = "white";
             sparkles.forEach(s => {
-                s.alpha += s.v;
-                if (s.alpha > 1 || s.alpha < 0) s.v *= -1;
-                ctx.globalAlpha = s.alpha;
-                ctx.beginPath(); ctx.arc(s.x, s.y, s.s, 0, Math.PI*2); ctx.fill();
+                s.alpha += s.v; if (s.alpha > 1 || s.alpha < 0) s.v *= -1;
+                if (s.x > bankWidth && s.x < canvas.width - bankWidth) {
+                    ctx.globalAlpha = s.alpha; ctx.beginPath(); ctx.arc(s.x, s.y, s.s, 0, Math.PI*2); ctx.fill();
+                }
             });
             ctx.globalAlpha = 1;
 
+            // Draw Terrain
             steps.forEach(step => {
                 if (step.type === 'bank') {
-                    ctx.fillStyle = '#222';
-                    ctx.fillRect(step.x - bankWidth/2, 0, bankWidth, canvas.height);
+                    ctx.fillStyle = '#222'; ctx.fillRect(step.x - bankWidth/2, 0, bankWidth, canvas.height);
                 } else if (step.type === 'sandbar') {
                     ctx.fillStyle = 'rgba(255, 140, 0, 0.15)';
                     ctx.fillRect(step.x - sandbarWidth/2, 0, sandbarWidth, canvas.height);
@@ -204,112 +274,104 @@
                 }
             });
 
+            // Draw Logs
             laneData.forEach(lane => {
                 let laneX = steps.find(s => s.laneIdx === lane.laneIdx).x;
-                let logW = laneWidth * 0.85;
                 lane.logs.forEach(log => {
                     log.y += lane.speed * lane.dir;
-                    const totalLoop = lane.logH + lane.gapH;
-                    if (lane.dir === 1 && log.y > canvas.height + 100) log.y -= (lane.logs.length * totalLoop);
-                    else if (lane.dir === -1 && log.y < -lane.logH - 100) log.y += (lane.logs.length * totalLoop);
-                    ctx.fillStyle = lane.color;
-                    ctx.beginPath(); ctx.roundRect(laneX - logW/2, log.y, logW, lane.logH, 25); ctx.fill();
-                    ctx.fillStyle = 'rgba(255,255,255,0.15)';
-                    ctx.fillRect(laneX - logW/2, log.y + 20, logW, 20);
+                    if (lane.dir === 1 && log.y > canvas.height + 100) log.y -= (lane.logs.length * (lane.logH + 120));
+                    else if (lane.dir === -1 && log.y < -lane.logH - 100) log.y += (lane.logs.length * (lane.logH + 120));
+                    
+                    ctx.fillStyle = `hsl(${log.hue}, 100%, 50%)`;
+                    ctx.beginPath(); ctx.roundRect(laneX - (laneWidth*0.4), log.y, laneWidth*0.8, lane.logH, 25); ctx.fill();
+                    ctx.fillStyle = 'rgba(255,255,255,0.1)'; ctx.fillRect(laneX - (laneWidth*0.4), log.y + 20, laneWidth*0.8, 20);
                 });
             });
 
+            // Stick to log if colors match
             if (!frog.isJumping && gameState === "play") {
                 let currentStep = steps[frog.stepIdx];
                 if (currentStep.type === 'lane') {
                     let lane = laneData.find(l => l.laneIdx === currentStep.laneIdx);
                     frog.y += lane.speed * lane.dir;
-                    if (frog.y < -40 || frog.y > canvas.height + 40) {
-                        gameState = "lose"; playSynth('splash', 0.5);
-                    }
+                    if (frog.y < -50 || frog.y > canvas.height + 50) resetGame();
                 }
             }
 
+            // Jump Animation
             if (frog.isJumping) {
-                frog.jumpT += 0.06;
-                let arc = Math.sin(frog.jumpT * Math.PI) * 120;
+                frog.jumpT += 0.05;
+                let arc = Math.sin(frog.jumpT * Math.PI) * 150;
                 frog.x = frog.oldX + (frog.targetX - frog.oldX) * frog.jumpT;
-                drawFrog(frog.x, frog.oldY - arc);
+                drawFrog(frog.x, frog.y - arc);
                 if (frog.jumpT >= 1) {
                     frog.x = frog.targetX; frog.isJumping = false;
-                    checkLanding();
+                    if (!frog.isBouncing) checkLanding();
                 }
             } else {
                 drawFrog(frog.x, frog.y);
             }
 
-            drawEffects();
-            if (gameState === "lose") {
-                ctx.fillStyle = "rgba(255, 0, 0, 0.4)";
-                ctx.fillRect(0,0, canvas.width, canvas.height);
-                setTimeout(resetGame, 1000);
-            }
             requestAnimationFrame(gameLoop);
         }
 
         function checkLanding() {
             let currentStep = steps[frog.stepIdx];
             if (currentStep.type === 'bank' && frog.stepIdx > 0) {
-                gameState = "win";
-                playSynth('win', 0.5);
-                megaCelebration(frog.x, frog.y);
-                setTimeout(resetGame, 3500);
+                gameState = "win"; playSynth('win', 0.5); setTimeout(resetGame, 3000); return;
             }
             if (currentStep.type === 'lane') {
                 let lane = laneData.find(l => l.laneIdx === currentStep.laneIdx);
-                let onAnyLog = lane.logs.some(log => frog.y >= log.y && frog.y <= log.y + lane.logH);
-                if (!onAnyLog) {
-                    gameState = "lose"; playSynth('splash', 0.5);
-                } else if (navigator.vibrate) navigator.vibrate(60);
+                let hitLog = lane.logs.find(log => frog.y >= log.y && frog.y <= log.y + lane.logH);
+                
+                if (!hitLog) {
+                    resetGame(); // Water fall
+                } else if (hitLog.hue !== targetHue) {
+                    bounceBack(); // Wrong color!
+                } else {
+                    if (navigator.vibrate) navigator.vibrate(60);
+                }
             }
         }
 
+        // --- DETAILED FROG DRAWING ---
         function drawFrog(x, y) {
+            ctx.save();
+            ctx.translate(x, y);
+
+            // Sticker Outline
             ctx.fillStyle = 'white';
-            ctx.beginPath(); ctx.arc(x, y, 48, 0, Math.PI * 2); ctx.fill();
-            ctx.fillStyle = '#00FF00';
-            ctx.beginPath(); ctx.arc(x, y, 40, 0, Math.PI*2); ctx.fill();
-            ctx.fillStyle = "white";
-            ctx.beginPath(); ctx.arc(x-15, y-10, 11, 0, Math.PI*2); ctx.fill();
-            ctx.beginPath(); ctx.arc(x+15, y-10, 11, 0, Math.PI*2); ctx.fill();
-            ctx.fillStyle = "black";
-            ctx.beginPath(); ctx.arc(x-15, y-10, 6, 0, Math.PI*2); ctx.fill();
-            ctx.beginPath(); ctx.arc(x+15, y-10, 6, 0, Math.PI*2); ctx.fill();
-        }
+            ctx.beginPath(); ctx.ellipse(0, 0, 55, 45, 0, 0, Math.PI*2); ctx.fill();
 
-        function megaCelebration(x, y) {
-            if (lowSensoryMode) return; // Skip flashes/lasers in low sensory
-            flash.style.backgroundColor = "white";
-            flash.style.opacity = 1;
-            setTimeout(() => flash.style.opacity = 0, 400);
-            for(let i=0; i<10; i++) lasers.push({x: x, y: y, angle: Math.random()*Math.PI*2, life: 1});
-            for(let i=0; i<30; i++) particles.push({
-                x: x, y: y, vx: (Math.random()-0.5) * 25, vy: (Math.random()-0.5) * 25, 
-                life: 1, color: `hsl(${Math.random()*360}, 100%, 50%)`
-            });
-        }
+            // Main Body (Target Color)
+            ctx.fillStyle = `hsl(${targetHue}, 100%, 45%)`;
+            ctx.beginPath(); ctx.ellipse(0, 0, 45, 38, 0, 0, Math.PI*2); ctx.fill();
 
-        function drawEffects() {
-            lasers.forEach(l => {
-                ctx.strokeStyle = `rgba(0, 255, 255, ${l.life})`;
-                ctx.lineWidth = 20 * l.life;
-                ctx.beginPath(); ctx.moveTo(l.x, l.y);
-                ctx.lineTo(l.x + Math.cos(l.angle) * 2000, l.y + Math.sin(l.angle) * 2000);
-                ctx.stroke(); l.life -= 0.015;
-            });
-            particles.forEach(p => {
-                ctx.fillStyle = p.color; ctx.globalAlpha = p.life;
-                ctx.beginPath(); ctx.arc(p.x, p.y, 12, 0, Math.PI*2); ctx.fill();
-                p.x += p.vx; p.y += p.vy; p.life -= 0.015;
-            });
-            lasers = lasers.filter(l => l.life > 0);
-            particles = particles.filter(p => p.life > 0);
-            ctx.globalAlpha = 1;
+            // Spots
+            ctx.fillStyle = `hsl(${targetHue}, 100%, 30%)`;
+            ctx.beginPath(); ctx.arc(-15, -10, 8, 0, Math.PI*2); ctx.fill();
+            ctx.beginPath(); ctx.arc(10, 15, 6, 0, Math.PI*2); ctx.fill();
+
+            // Legs
+            ctx.strokeStyle = `hsl(${targetHue}, 100%, 45%)`;
+            ctx.lineWidth = 12; ctx.lineCap = 'round';
+            // Back Legs
+            ctx.beginPath(); ctx.moveTo(-35, 10); ctx.lineTo(-50, 30); ctx.stroke();
+            ctx.beginPath(); ctx.moveTo(35, 10); ctx.lineTo(50, 30); ctx.stroke();
+            // Front Legs
+            ctx.beginPath(); ctx.moveTo(-20, 20); ctx.lineTo(-25, 40); ctx.stroke();
+            ctx.beginPath(); ctx.moveTo(20, 20); ctx.lineTo(25, 40); ctx.stroke();
+
+            // Eyes
+            ctx.fillStyle = 'white';
+            ctx.beginPath(); ctx.arc(-18, -25, 12, 0, Math.PI*2); ctx.fill();
+            ctx.beginPath(); ctx.arc(18, -25, 12, 0, Math.PI*2); ctx.fill();
+            // Pupils
+            ctx.fillStyle = 'black';
+            ctx.beginPath(); ctx.arc(-18, -28, 5, 0, Math.PI*2); ctx.fill();
+            ctx.beginPath(); ctx.arc(18, -28, 5, 0, Math.PI*2); ctx.fill();
+
+            ctx.restore();
         }
 
         window.onresize = resize;
