@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>NEON RACER - OVAL CIRCUIT</title>
+    <title>NEON RACER - ACCESSIBILITY EDITION</title>
     <style>
         body { 
             background-color: #000; margin: 0; overflow: hidden; 
@@ -16,8 +16,7 @@
             position: fixed; top: 15px; left: 15px; z-index: 1000;
             color: white; text-decoration: none; font-size: 24px;
             background: rgba(255, 255, 255, 0.1); padding: 10px; 
-            border-radius: 10px; border: 1px solid rgba(255,255,255,0.2);
-            opacity: 0.3; transition: opacity 0.3s;
+            border-radius: 10px; opacity: 0.3; transition: opacity 0.3s;
         }
         #home-button:hover { opacity: 1.0; background: rgba(255, 255, 255, 0.3); }
 
@@ -27,7 +26,7 @@
             flex-direction: column; justify-content: center; align-items: center; 
             z-index: 100; cursor: pointer; text-align: center;
         }
-        #win-overlay { background: rgba(0,0,0,0.9); display: none; z-index: 200; }
+        #win-overlay { background: rgba(0,0,0,0.9); display: none; z-index: 200; pointer-events: none; }
 
         .btn-ui {
             font-size: 50px; padding: 30px 60px; border: 8px solid #FFD700;
@@ -39,7 +38,7 @@
         #flash { position: fixed; top:0; left:0; width:100%; height:100%; opacity: 0; z-index: 150; pointer-events: none; }
         
         #hud { position: absolute; top: 20px; right: 20px; color: #FFD700; font-size: 30px; font-weight: bold; z-index: 50; }
-        h1 { color: #FFD700; position: absolute; bottom: 20px; letter-spacing: 10px; opacity: 0.4; pointer-events: none; }
+        h1 { color: #FFD700; position: absolute; bottom: 20px; letter-spacing: 10px; opacity: 0.3; pointer-events: none; }
     </style>
 </head>
 <body onmousedown="handleInput(event)" onkeydown="handleInput(event)">
@@ -61,26 +60,35 @@
     <canvas id="gameCanvas"></canvas>
     <h1>OVAL CIRCUIT</h1>
 
+    <!-- UNIQUE RACING BACKGROUND MUSIC -->
+    <audio id="bg-music" loop preload="auto">
+        <source src="https://www.soundhelix.com/examples/mp3/SoundHelix-Song-4.mp3" type="audio/mpeg">
+    </audio>
+
     <script>
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
         const flash = document.getElementById('flash');
         const hud = document.getElementById('hud');
         const winOverlay = document.getElementById('win-overlay');
+        const bgMusic = document.getElementById('bg-music');
         
+        // --- SENSORY MODE CHECK ---
+        const lowSensoryMode = localStorage.getItem('lowSensory') === 'true';
+
         let audioCtx, isStarted = false, gameState = "play";
         let lastPressTime = 0, cooldown = 120;
 
-        // Circuit Logic
         let car = { angle: 0, speed: 0, boost: 1 };
         let laps = 0;
-        let themeHue = 180; // Start Cyan
+        let themeHue = 180; 
         let ovalW, ovalH;
-        
         let particles = [], lasers = [];
 
         function startEngine() {
             audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            bgMusic.volume = 0.2;
+            bgMusic.play();
             resize();
             document.getElementById('overlay').style.display = 'none';
             isStarted = true;
@@ -95,20 +103,23 @@
         }
 
         function handleInput(event) {
-            if (event.target.id === 'home-button') return;
-            if (!isStarted || gameState === "win") return;
+            if (event.target.id === 'home-button' || !isStarted || gameState === "win") return;
             if (event.type === 'keydown' && event.code !== "Space" && event.code !== "Enter") return;
 
             const now = Date.now();
             if (now - lastPressTime < cooldown) return;
             lastPressTime = now;
 
-            // Providing a burst of rotational speed
             car.speed += 0.08; 
             car.boost = 1.6;
             
             playRevSound();
-            flashScreen(`hsla(${themeHue}, 100%, 50%, 0.3)`, 80);
+            
+            // Only flash in High Sensory mode
+            if (!lowSensoryMode) {
+                flashScreen(`hsla(${themeHue}, 100%, 50%, 0.3)`, 80);
+            }
+            if (navigator.vibrate) navigator.vibrate(50);
         }
 
         function playRevSound() {
@@ -124,10 +135,10 @@
         }
 
         function flashScreen(color, time) {
+            if (lowSensoryMode) return;
             flash.style.backgroundColor = color;
             flash.style.opacity = 1;
             setTimeout(() => flash.style.opacity = 0, time);
-            if (navigator.vibrate) navigator.vibrate(50);
         }
 
         function gameLoop() {
@@ -137,11 +148,9 @@
             if (gameState === "play") {
                 let oldAngle = car.angle;
                 car.angle += car.speed;
-                car.speed *= 0.97; // Friction
+                car.speed *= 0.97; 
                 if (car.boost > 1) car.boost -= 0.05;
 
-                // Detect Finish Line Cross (Crossing 0 / 2*PI)
-                // In math, 0 is at 3 o'clock.
                 if (oldAngle < Math.PI * 2 && car.angle >= Math.PI * 2) {
                     car.angle -= Math.PI * 2;
                     crossFinishLine();
@@ -158,7 +167,7 @@
 
         function crossFinishLine() {
             laps++;
-            themeHue = (themeHue + 70) % 360; // Instant Color Shift
+            themeHue = (themeHue + 70) % 360; 
             hud.style.color = `hsl(${themeHue}, 100%, 50%)`;
             
             if (laps >= 5) {
@@ -178,7 +187,6 @@
             ctx.ellipse(canvas.width/2, canvas.height/2, ovalW, ovalH, 0, 0, Math.PI * 2);
             ctx.stroke();
 
-            // Inner line for "Neon" look
             ctx.strokeStyle = "black";
             ctx.lineWidth = 60;
             ctx.stroke();
@@ -189,16 +197,12 @@
         }
 
         function drawFinishLine() {
-            // Drawn at the 0 angle (3 o'clock)
             const fx = canvas.width/2 + ovalW;
             const fy = canvas.height/2;
             const size = 80;
-
             ctx.save();
             ctx.translate(fx, fy);
-            // Checkerboard pattern
-            const rows = 4;
-            const cols = 2;
+            const rows = 4; const cols = 2;
             const step = size / rows;
             for(let r=0; r<rows; r++) {
                 for(let c=0; c<cols; c++) {
@@ -212,9 +216,6 @@
         function drawCar() {
             const cx = canvas.width/2 + Math.cos(car.angle) * ovalW;
             const cy = canvas.height/2 + Math.sin(car.angle) * ovalH;
-
-            // Calculate rotation to face the direction of the oval tangent
-            // Tangent of an ellipse (x=a cos t, y=b sin t) is (-a sin t, b cos t)
             const tx = -ovalW * Math.sin(car.angle);
             const ty = ovalH * Math.cos(car.angle);
             const rotation = Math.atan2(ty, tx);
@@ -224,18 +225,13 @@
             ctx.rotate(rotation);
             ctx.scale(car.boost, car.boost);
 
-            // Car Body
             ctx.fillStyle = `hsl(${themeHue}, 100%, 50%)`;
             ctx.shadowBlur = 15; ctx.shadowColor = "white";
-            ctx.beginPath();
-            ctx.roundRect(-30, -20, 60, 40, 10);
-            ctx.fill();
+            ctx.beginPath(); ctx.roundRect(-30, -20, 60, 40, 10); ctx.fill();
             
-            // Cockpit
             ctx.fillStyle = "black";
             ctx.fillRect(-10, -12, 25, 24);
 
-            // Spoiler
             ctx.fillStyle = `hsl(${themeHue}, 100%, 30%)`;
             ctx.fillRect(-35, -18, 10, 36);
 
@@ -265,6 +261,7 @@
         }
 
         function megaCelebration(x, y) {
+            if (lowSensoryMode) return; 
             flashScreen("white", 150);
             for(let i=0; i<10; i++) lasers.push({x: x, y: y, angle: Math.random() * Math.PI * 2, life: 1});
             for(let i=0; i<25; i++) particles.push({
@@ -291,8 +288,7 @@
                 ctx.strokeStyle = `hsla(${themeHue}, 100%, 70%, ${l.life})`;
                 ctx.lineWidth = 15 * l.life;
                 ctx.beginPath(); ctx.moveTo(l.x, l.y);
-                ctx.lineTo(l.x + Math.cos(l.angle) * 2000, l.y + Math.sin(l.angle) * 2000);
-                ctx.stroke();
+                ctx.lineTo(l.x + Math.cos(l.angle) * 2000, l.lineTo + Math.sin(l.angle) * 2000); ctx.stroke();
                 l.life -= 0.03;
             });
             particles.forEach(p => {
