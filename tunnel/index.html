@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>STAR TUNNEL - SUSTAINED ACTION</title>
+    <title>STAR TUNNEL - DEEP SPACE</title>
     <style>
         body { 
             background-color: #000; margin: 0; overflow: hidden; 
@@ -20,24 +20,22 @@
         }
         #home-button:hover { opacity: 1.0; background: rgba(255, 255, 255, 0.3); }
 
-        #overlay, #win-overlay {
+        #overlay {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: #000; display: flex; 
+            background: #000; color: #00FFFF; display: flex; 
             flex-direction: column; justify-content: center; align-items: center; 
             z-index: 100; cursor: pointer; text-align: center;
         }
-        #win-overlay { background: rgba(0,0,0,0.9); display: none; z-index: 200; pointer-events: none; }
-
         .btn-ui {
             font-size: 50px; padding: 30px 60px; border: 8px solid #00FFFF;
             background: transparent; color: #00FFFF; font-weight: bold;
             border-radius: 20px; box-shadow: 0 0 30px #00FFFF;
         }
 
-        canvas { display: block; z-index: 10; }
+        canvas { display: block; position: absolute; top: 0; left: 0; }
         #flash { position: fixed; top:0; left:0; width:100%; height:100%; opacity: 0; z-index: 150; pointer-events: none; }
         #hud { position: absolute; top: 20px; right: 20px; color: #00FFFF; font-size: 30px; font-weight: bold; z-index: 50; }
-        h1 { color: #00FFFF; position: absolute; bottom: 20px; letter-spacing: 10px; opacity: 0.3; pointer-events: none; }
+        h1 { color: #00FFFF; position: absolute; bottom: 20px; letter-spacing: 10px; opacity: 0.2; pointer-events: none; z-index: 50; }
     </style>
 </head>
 <body onkeydown="handleKeyDown(event)" onkeyup="handleKeyUp(event)" onmousedown="handleMouseDown(event)" onmouseup="handleMouseUp(event)">
@@ -47,12 +45,7 @@
 
     <div id="overlay" onclick="startEngine()">
         <div class="btn-ui">ENGINE START</div>
-        <p style="margin-top: 20px; color: white; font-size: 24px;">(Tap to Boost through Space!)</p>
-    </div>
-
-    <div id="win-overlay">
-        <h2 style="color: #00FFFF; font-size: 80px; margin: 0;">WARP REACHED!</h2>
-        <p style="color: white; font-size: 30px;">DISTANCE MILESTONE COMPLETE!</p>
+        <p style="margin-top: 20px; color: white; font-size: 24px;">(Tap to Warp through the Stars!)</p>
     </div>
 
     <div id="hud">Distance: 0</div>
@@ -68,40 +61,52 @@
         const ctx = canvas.getContext('2d');
         const flash = document.getElementById('flash');
         const hud = document.getElementById('hud');
-        const winOverlay = document.getElementById('win-overlay');
         const bgMusic = document.getElementById('bg-music');
         
+        // --- HUB SETTINGS ---
         const lowSensoryMode = localStorage.getItem('lowSensory') === 'true';
+        const isMuted = localStorage.getItem('muteMusic') === 'true';
 
         let audioCtx, isStarted = false, gameState = "play";
-        let lastPressTime = 0, cooldown = 100;
         let switchIsDown = false;
 
-        // Tunnel Logic
         let speed = 2;
         let targetSpeed = 2;
         let distance = 0;
-        let lines = [];
-        let tunnelHue = 180; // Cyan
+        let tunnelRings = [];
+        let stars = [];
+        let tunnelHue = 180; 
 
         function startEngine() {
             audioCtx = new (window.AudioContext || window.webkitAudioContext)();
             canvas.width = window.innerWidth;
             canvas.height = window.innerHeight;
-            bgMusic.volume = 0.2;
+            
+            // Background Music Logic
+            bgMusic.volume = isMuted ? 0 : 0.2;
             bgMusic.play();
+
             document.getElementById('overlay').style.display = 'none';
             isStarted = true;
             
             // Create initial tunnel rings
             for(let i=0; i<15; i++) {
-                lines.push({ z: i * 100 });
+                tunnelRings.push({ z: i * 120 });
+            }
+
+            // Create 300 Stars for dense field
+            for(let i=0; i<300; i++) {
+                stars.push({
+                    x: (Math.random() - 0.5) * canvas.width * 2,
+                    y: (Math.random() - 0.5) * canvas.height * 2,
+                    z: Math.random() * 2000,
+                    s: Math.random() * 2 + 1
+                });
             }
 
             requestAnimationFrame(gameLoop);
         }
 
-        // --- INPUT HANDLING (ANTI-SPAM) ---
         function handleKeyDown(e) { if (!e.repeat && (e.code === "Space" || e.code === "Enter")) processBoost(); }
         function handleKeyUp(e) { if (e.code === "Space" || e.code === "Enter") switchIsDown = false; }
         function handleMouseDown(e) { if (e.target.id === 'home-button') return; processBoost(); }
@@ -111,9 +116,8 @@
             if (!isStarted || gameState !== "play" || switchIsDown) return;
             switchIsDown = true;
 
-            // Increase speed significantly on click
             targetSpeed += 15;
-            if (targetSpeed > 60) targetSpeed = 60; // Max speed cap
+            if (targetSpeed > 70) targetSpeed = 70; 
             
             playBoostSound();
             
@@ -130,11 +134,9 @@
             const gain = audioCtx.createGain();
             osc.connect(gain); gain.connect(audioCtx.destination);
             const now = audioCtx.currentTime;
-            
             osc.type = 'sawtooth';
-            osc.frequency.setValueAtTime(50 + (speed * 10), now);
-            osc.frequency.exponentialRampToValueAtTime(200 + (speed * 20), now + 0.2);
-            
+            osc.frequency.setValueAtTime(40 + (speed * 8), now);
+            osc.frequency.exponentialRampToValueAtTime(150 + (speed * 15), now + 0.2);
             gain.gain.setValueAtTime(0.3, now);
             gain.gain.exponentialRampToValueAtTime(0.001, now + 0.3);
             osc.start(); osc.stop(now + 0.3);
@@ -145,62 +147,62 @@
             ctx.fillRect(0, 0, canvas.width, canvas.height);
 
             if (gameState === "play") {
-                // Physics: Smoothly approach targetSpeed then decay
                 speed += (targetSpeed - speed) * 0.1;
-                targetSpeed *= 0.98; // Speed decays over time
-                if (targetSpeed < 2) targetSpeed = 2;
+                targetSpeed *= 0.98; 
+                if (targetSpeed < 3) targetSpeed = 3;
 
                 distance += Math.floor(speed);
                 hud.innerText = `Distance: ${distance}`;
 
-                // Milestone Celebration
-                if (distance > 0 && distance % 5000 < speed) {
-                    triggerMilestone();
+                if (distance > 0 && distance % 6000 < speed) {
+                    tunnelHue = (tunnelHue + 60) % 360;
                 }
             }
 
+            drawStars();
             drawTunnel();
             requestAnimationFrame(gameLoop);
         }
 
-        function triggerMilestone() {
-            tunnelHue = (tunnelHue + 60) % 360;
-            if (!lowSensoryMode) {
-                flash.style.backgroundColor = "white";
-                flash.style.opacity = 0.5;
-                setTimeout(() => flash.style.opacity = 0, 300);
-            }
+        function drawStars() {
+            const cx = canvas.width / 2;
+            const cy = canvas.height / 2;
+            ctx.fillStyle = "white";
+
+            stars.forEach(s => {
+                s.z -= speed * 1.5; // Stars move faster than rings for depth
+                if (s.z <= 0) s.z = 2000;
+
+                const perspective = 600 / (600 + s.z);
+                const x = cx + s.x * perspective;
+                const y = cy + s.y * perspective;
+                const size = s.s * perspective * 2;
+
+                ctx.globalAlpha = 1 - (s.z / 2000);
+                ctx.beginPath();
+                ctx.arc(x, y, size, 0, Math.PI * 2);
+                ctx.fill();
+            });
+            ctx.globalAlpha = 1;
         }
 
         function drawTunnel() {
             const cx = canvas.width / 2;
             const cy = canvas.height / 2;
 
-            lines.forEach(line => {
-                line.z -= speed;
-                if (line.z <= 0) line.z = 1500;
+            tunnelRings.forEach(ring => {
+                ring.z -= speed;
+                if (ring.z <= 0) ring.z = 1800;
 
-                // 3D Projection
-                const perspective = 400 / (400 + line.z);
-                const size = 2000 * perspective;
+                const perspective = 500 / (500 + ring.z);
+                const size = 2500 * perspective;
                 
                 ctx.strokeStyle = `hsl(${tunnelHue}, 100%, 50%)`;
-                ctx.lineWidth = 10 * perspective;
-                ctx.globalAlpha = 1 - (line.z / 1500);
+                ctx.lineWidth = 12 * perspective;
+                ctx.globalAlpha = 1 - (ring.z / 1800);
 
-                // Draw Square Ring
+                // Draw clean square rings without diagonal corner lines
                 ctx.strokeRect(cx - size/2, cy - size/2, size, size);
-
-                // Draw Connecting corner lines to create depth
-                ctx.beginPath();
-                ctx.moveTo(cx - size/2, cy - size/2);
-                ctx.lineTo(cx, cy);
-                ctx.stroke();
-
-                ctx.beginPath();
-                ctx.moveTo(cx + size/2, cy - size/2);
-                ctx.lineTo(cx, cy);
-                ctx.stroke();
             });
             ctx.globalAlpha = 1;
         }
