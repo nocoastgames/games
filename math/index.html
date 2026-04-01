@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>MEGA MATH - QUANTITY LOGIC</title>
+    <style>
+        body { 
+            background-color: #000; margin: 0; overflow: hidden; 
+            display: flex; flex-direction: column; justify-content: center; 
+            align-items: center; height: 100vh; font-family: 'Arial Black', sans-serif;
+            user-select: none; touch-action: manipulation;
+        }
+
+        #home-button {
+            position: fixed; top: 15px; left: 15px; z-index: 1000;
+            color: white; text-decoration: none; font-size: 24px;
+            background: rgba(255, 255, 255, 0.1); padding: 10px; 
+            border-radius: 10px; opacity: 0.3; transition: opacity 0.3s;
+        }
+        #home-button:hover { opacity: 1.0; background: rgba(255, 255, 255, 0.3); }
+
+        #overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: #000; color: #FFF; display: flex; 
+            flex-direction: column; justify-content: center; align-items: center; 
+            z-index: 500; text-align: center;
+        }
+        .settings-card {
+            background: #111; padding: 30px; border-radius: 30px;
+            border: 4px solid #FF00FF; width: 85%; max-width: 500px;
+        }
+        .btn-ui {
+            font-size: 30px; padding: 15px 40px; border: 6px solid #FF00FF;
+            background: transparent; color: #FF00FF; font-weight: bold;
+            border-radius: 20px; cursor: pointer; margin-top: 20px;
+        }
+
+        /* MATH LAYOUT */
+        .math-container { display: flex; gap: 40px; z-index: 10; width: 95%; justify-content: center; align-items: center; }
+        
+        .quantity-box {
+            width: 350px; height: 350px; border: 8px solid #333;
+            border-radius: 30px; background: #080808; position: relative;
+            display: grid; grid-template-columns: repeat(3, 1fr);
+            grid-template-rows: repeat(3, 1fr); padding: 20px; box-sizing: border-box;
+        }
+
+        .item { font-size: 60px; display: flex; justify-content: center; align-items: center; }
+
+        .label-container { display: flex; gap: 40px; margin-top: 30px; }
+        .math-label {
+            width: 250px; padding: 20px; border: 6px solid #222;
+            border-radius: 20px; font-size: 40px; color: #444;
+            text-align: center; transition: 0.3s;
+        }
+
+        .active {
+            transform: scale(1.1);
+            box-shadow: 0 0 60px #FF00FF;
+            background: #111;
+            border-color: #FF00FF !important;
+            color: #FF00FF !important;
+        }
+
+        #question-text { color: white; font-size: 32px; margin-bottom: 30px; text-transform: uppercase; }
+
+        canvas { position: absolute; top: 0; left: 0; pointer-events: none; z-index: 5; }
+        #flash { position: fixed; top:0; left:0; width:100%; height:100%; opacity: 0; z-index: 150; pointer-events: none; }
+    </style>
+</head>
+<body onkeydown="handleKeyDown(event)" onkeyup="handleKeyUp(event)" onmousedown="handleMouseDown(event)" onmouseup="handleMouseUp(event)">
+
+    <a id="home-button" href="../index.html">🏠</a>
+    <div id="flash"></div>
+
+    <div id="overlay">
+        <div class="settings-card">
+            <h2 style="color: #FF00FF;">MEGA MATH</h2>
+            <p>Scanning Speed: <span id="speed-val">2.5</span>s</p>
+            <input type="range" id="speed-slider" min="1.0" max="5.0" step="0.1" value="2.5" style="width:100%;">
+            
+            <p>Difficulty:</p>
+            <select id="diff-select" style="font-size:20px; padding:10px; width:100%;">
+                <option value="easy">Easy (Big Differences: 1 vs 6)</option>
+                <option value="hard">Hard (Close Numbers: 4 vs 5)</option>
+            </select>
+
+            <button class="btn-ui" onclick="startEngine()">START MATH</button>
+        </div>
+    </div>
+
+    <div id="question-text">WHICH HAS MORE?</div>
+
+    <div class="math-container">
+        <div id="box-0" class="quantity-box"></div>
+        <div id="box-1" class="quantity-box"></div>
+    </div>
+
+    <div class="label-container">
+        <div id="label-0" class="math-label">LEFT</div>
+        <div id="label-1" class="math-label">RIGHT</div>
+    </div>
+
+    <canvas id="gameCanvas"></canvas>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const flash = document.getElementById('flash');
+        const qText = document.getElementById('question-text');
+        
+        const lowSensoryMode = localStorage.getItem('lowSensory') === 'true';
+        const isMuted = localStorage.getItem('muteMusic') === 'true';
+
+        let audioCtx, isStarted = false, isWinner = false;
+        let switchIsDown = false, inputBlocked = false;
+        let scanTimer, activeIdx = 0, scanSpeed = 2500;
+
+        let boxQuantities = [0, 0];
+        let currentGoal = 'more'; // 'more' or 'less'
+        let currentEmoji = '⭐';
+        const emojis = ['⭐', '💎', '🍬', '🎈', '🍎', '🟡', '🦋'];
+
+        document.getElementById('speed-slider').oninput = function() {
+            document.getElementById('speed-val').innerText = this.value;
+            scanSpeed = parseFloat(this.value) * 1000;
+        };
+
+        function startEngine() {
+            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            canvas.width = window.innerWidth; canvas.height = window.innerHeight;
+            document.getElementById('overlay').style.display = 'none';
+            isStarted = true;
+            nextRound();
+            startScan();
+            requestAnimationFrame(drawParticles);
+        }
+
+        function speak(text) {
+            if (isMuted) return;
+            window.speechSynthesis.cancel();
+            const msg = new SpeechSynthesisUtterance(text);
+            msg.rate = 1.0;
+            window.speechSynthesis.speak(msg);
+        }
+
+        function nextRound() {
+            isWinner = false; inputBlocked = false;
+            const diff = document.getElementById('diff-select').value;
+            currentEmoji = emojis[Math.floor(Math.random() * emojis.length)];
+            
+            // Generate numbers
+            if (diff === 'easy') {
+                boxQuantities[0] = Math.floor(Math.random() * 3) + 1; // 1-3
+                boxQuantities[1] = Math.floor(Math.random() * 4) + 6; // 6-9
+            } else {
+                let n = Math.floor(Math.random() * 5) + 3; // 3-7
+                boxQuantities[0] = n;
+                boxQuantities[1] = n + 1;
+            }
+
+            // Shuffle boxes
+            if (Math.random() > 0.5) boxQuantities.reverse();
+
+            // Set Goal
+            currentGoal = Math.random() > 0.5 ? 'more' : 'less';
+            qText.innerText = `Which has ${currentGoal}?`;
+            speak(`Which box has ${currentGoal}?`);
+
+            renderBoxes();
+        }
+
+        function renderBoxes() {
+            for (let b = 0; b < 2; b++) {
+                const container = document.getElementById(`box-${b}`);
+                container.innerHTML = '';
+                for (let i = 0; i < boxQuantities[b]; i++) {
+                    const item = document.createElement('div');
+                    item.className = 'item';
+                    item.innerText = currentEmoji;
+                    container.appendChild(item);
+                }
+            }
+        }
+
+        function startScan() {
+            if(scanTimer) clearInterval(scanTimer);
+            scanTimer = setInterval(() => {
+                if (isWinner || inputBlocked) return;
+                activeIdx = (activeIdx + 1) % 2;
+                updateVisualSelection();
+                playSynth('tick', 0.1);
+                speak(activeIdx === 0 ? "Left box" : "Right box");
+            }, scanSpeed);
+        }
+
+        function updateVisualSelection() {
+            document.getElementById('label-0').classList.toggle('active', activeIdx === 0);
+            document.getElementById('box-0').style.borderColor = (activeIdx === 0) ? '#FF00FF' : '#333';
+            document.getElementById('label-1').classList.toggle('active', activeIdx === 1);
+            document.getElementById('box-1').style.borderColor = (activeIdx === 1) ? '#FF00FF' : '#333';
+        }
+
+        function handleKeyDown(e) { if (!e.repeat && (e.code === "Space" || e.code === "Enter")) processInput(); }
+        function handleKeyUp(e) { if (e.code === "Space" || e.code === "Enter") switchIsDown = false; }
+        function handleMouseDown(e) { if (e.target.id === 'home-button' || e.target.type === 'range' || e.target.tagName === 'SELECT') return; processInput(); }
+        function handleMouseUp() { switchIsDown = false; }
+
+        function processInput() {
+            if (!isStarted || isWinner || inputBlocked || switchIsDown) return;
+            switchIsDown = true;
+
+            const isLeftCorrect = (currentGoal === 'more') ? (boxQuantities[0] > boxQuantities[1]) : (boxQuantities[0] < boxQuantities[1]);
+            const selectedCorrectly = (activeIdx === 0 && isLeftCorrect) || (activeIdx === 1 && !isLeftCorrect);
+
+            if (selectedCorrectly) success();
+            else fail();
+        }
+
+        function success() {
+            isWinner = true;
+            playSynth('win', 0.5);
+            speak("Yes! That box has " + currentGoal);
+            
+            if (!lowSensoryMode) triggerMegaParty();
+            setTimeout(nextRound, 4000);
+        }
+
+        function fail() {
+            inputBlocked = true;
+            playSynth('fail', 0.3);
+            speak("Try again.");
+            const el = document.getElementById(`label-${activeIdx}`);
+            el.style.borderColor = "#FF0000";
+            setTimeout(() => {
+                el.style.borderColor = "";
+                inputBlocked = false;
+            }, 1000);
+        }
+
+        function playSynth(type, vol) {
+            const now = audioCtx.currentTime;
+            const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain();
+            osc.connect(gain); gain.connect(audioCtx.destination);
+            if (type === 'tick') {
+                osc.frequency.setValueAtTime(300, now); gain.gain.setValueAtTime(vol, now);
+                gain.gain.exponentialRampToValueAtTime(0.001, now + 0.1); osc.start(); osc.stop(now + 0.1);
+            } else if (type === 'win') {
+                osc.type = 'triangle'; osc.frequency.setValueAtTime(440, now);
+                osc.frequency.exponentialRampToValueAtTime(880, now + 0.5); gain.gain.setValueAtTime(vol, now);
+                gain.gain.exponentialRampToValueAtTime(0.001, now + 0.5); osc.start(); osc.stop(now + 0.5);
+            } else if (type === 'fail') {
+                osc.type = 'sawtooth'; osc.frequency.setValueAtTime(100, now);
+                gain.gain.setValueAtTime(vol, now); gain.gain.exponentialRampToValueAtTime(0.001, now + 0.3);
+                osc.start(); osc.stop(now + 0.3);
+            }
+        }
+
+        let particles = [];
+        function triggerMegaParty() {
+            flash.style.backgroundColor = "white"; flash.style.opacity = 0.2;
+            setTimeout(() => flash.style.opacity = 0, 100);
+            for(let i=0; i<30; i++) particles.push({x: canvas.width/2, y: canvas.height/2, vx: (Math.random()-0.5)*30, vy: (Math.random()-0.5)*30, life: 1, color: '#FF00FF', s: 15});
+        }
+        function drawParticles() {
+            ctx.clearRect(0,0,canvas.width, canvas.height);
+            particles.forEach(p => {
+                ctx.fillStyle = p.color; ctx.globalAlpha = p.life;
+                ctx.beginPath(); ctx.arc(p.x, p.y, p.s, 0, Math.PI*2); ctx.fill();
+                p.x += p.vx; p.y += p.vy; p.life -= 0.02;
+            });
+            particles = particles.filter(p => p.life > 0);
+            requestAnimationFrame(drawParticles);
+        }
+    </script>
+</body>
+</html>
