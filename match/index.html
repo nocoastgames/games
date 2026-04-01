@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>TARGET MATCH - SAFE INPUT</title>
+    <style>
+        body { 
+            background-color: #000; margin: 0; overflow: hidden; 
+            display: flex; flex-direction: column; justify-content: center; 
+            align-items: center; height: 100vh; font-family: 'Arial Black', sans-serif;
+            user-select: none; touch-action: manipulation;
+        }
+
+        #home-button {
+            position: fixed; top: 15px; left: 15px; z-index: 1000;
+            color: white; text-decoration: none; font-size: 24px;
+            background: rgba(255, 255, 255, 0.1); padding: 10px; 
+            border-radius: 10px; opacity: 0.3; transition: opacity 0.3s;
+        }
+        #home-button:hover { opacity: 1.0; background: rgba(255, 255, 255, 0.3); }
+
+        #overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: #000; color: #00FFFF; display: flex; 
+            flex-direction: column; justify-content: center; align-items: center; 
+            z-index: 100; cursor: pointer; text-align: center;
+        }
+        .btn-ui {
+            font-size: 50px; padding: 30px 60px; border: 8px solid #00FFFF;
+            background: transparent; color: #00FFFF; font-weight: bold;
+            border-radius: 20px; box-shadow: 0 0 30px #00FFFF;
+        }
+
+        .game-container { display: flex; align-items: center; gap: 50px; z-index: 10; }
+        .box {
+            width: 200px; height: 200px; border: 8px solid #222;
+            border-radius: 30px; display: flex; justify-content: center;
+            align-items: center; font-size: 90px; background: #080808;
+            transition: all 0.3s; opacity: 1;
+        }
+
+        .target-area { display: flex; flex-direction: column; align-items: center; gap: 20px; }
+        .target-box { border-color: #FFFF00; box-shadow: 0 0 30px rgba(255, 255, 0, 0.3); }
+        .choices-area { display: flex; flex-direction: column; gap: 15px; }
+        
+        .active { border-color: #FFF; transform: scale(1.15); box-shadow: 0 0 50px #FFF; background: #1a1a1a; }
+        .removed { opacity: 0; transform: scale(0.5); pointer-events: none; }
+
+        canvas { position: absolute; top: 0; left: 0; pointer-events: none; z-index: 5; }
+        #flash { position: fixed; top:0; left:0; width:100%; height:100%; opacity: 0; z-index: 150; pointer-events: none; }
+        h1 { color: #444; position: absolute; bottom: 20px; letter-spacing: 5px; }
+    </style>
+</head>
+<body onkeydown="handleKeyDown(event)" onkeyup="handleKeyUp(event)" onmousedown="handleMouseDown(event)" onmouseup="handleMouseUp(event)">
+
+    <a id="home-button" href="../index.html">🏠</a>
+    <div id="flash"></div>
+
+    <div id="overlay" onclick="startEngine()">
+        <div class="btn-ui">START MATCHING</div>
+        <p style="margin-top: 20px; color: white; font-size: 24px;">(Anti-Spam Input Enabled)</p>
+    </div>
+
+    <div class="game-container">
+        <div class="target-area">
+            <div style="color: #FFFF00; font-size: 24px;">MATCH THE:</div>
+            <div id="target-box" class="box target-box">?</div>
+        </div>
+        <div style="font-size: 60px; color: #444;">➡️</div>
+        <div class="choices-area">
+            <div id="choice-0" class="box">?</div>
+            <div id="choice-1" class="box">?</div>
+            <div id="choice-2" class="box">?</div>
+        </div>
+    </div>
+
+    <canvas id="gameCanvas"></canvas>
+    <h1>TARGET MATCH</h1>
+
+    <audio id="bg-music" loop preload="auto">
+        <source src="https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3" type="audio/mpeg">
+    </audio>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const flash = document.getElementById('flash');
+        const bgMusic = document.getElementById('bg-music');
+        const lowSensoryMode = localStorage.getItem('lowSensory') === 'true';
+
+        let audioCtx, isStarted = false, isWinner = false;
+        
+        // --- ANTI-SPAM VARIABLES ---
+        let switchIsDown = false; 
+        let inputBlocked = false; // Internal lockout during celebrations/errors
+        const lockoutTime = 800; // 0.8s cooldown
+
+        const icons = ['⭐', '🎈', '🚗', '🍎', '🐶', '🍕', '🌞', '🌙', '🏀', '🧸', '🌈', '🍦'];
+        let currentTarget = '';
+        let currentChoices = [];
+        let removedIndices = [];
+        let activeIdx = 0;
+        let scanTimer;
+
+        function startEngine() {
+            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            canvas.width = window.innerWidth; canvas.height = window.innerHeight;
+            bgMusic.volume = 0.1; bgMusic.play();
+            document.getElementById('overlay').style.display = 'none';
+            isStarted = true;
+            nextRound();
+            startScan();
+            requestAnimationFrame(drawParticles);
+        }
+
+        function nextRound() {
+            isWinner = false;
+            inputBlocked = false;
+            removedIndices = [];
+            currentTarget = icons[Math.floor(Math.random() * icons.length)];
+            document.getElementById('target-box').innerText = currentTarget;
+            currentChoices = [currentTarget];
+            while(currentChoices.length < 3) {
+                let r = icons[Math.floor(Math.random() * icons.length)];
+                if(!currentChoices.includes(r)) currentChoices.push(r);
+            }
+            currentChoices.sort(() => Math.random() - 0.5);
+            for(let i=0; i<3; i++) {
+                document.getElementById(`choice-${i}`).innerText = currentChoices[i];
+                document.getElementById(`choice-${i}`).className = 'box';
+            }
+            activeIdx = 0;
+            updateVisualSelection();
+        }
+
+        function startScan() {
+            if(scanTimer) clearInterval(scanTimer);
+            scanTimer = setInterval(() => {
+                if (isWinner || inputBlocked) return;
+                let nextIdx = (activeIdx + 1) % 3;
+                while (removedIndices.includes(nextIdx)) { nextIdx = (nextIdx + 1) % 3; }
+                activeIdx = nextIdx;
+                updateVisualSelection();
+                playSynth('tick', 0.1);
+            }, 1800);
+        }
+
+        // --- THE ANTI-SPAM HANDLERS ---
+        function handleKeyDown(e) {
+            if (e.repeat) return; // Block browser auto-repeat
+            if (e.code === "Space" || e.code === "Enter") {
+                processInput();
+            }
+        }
+        function handleKeyUp(e) {
+            if (e.code === "Space" || e.code === "Enter") switchIsDown = false;
+        }
+        function handleMouseDown(e) {
+            if (e.target.id === 'home-button') return;
+            processInput();
+        }
+        function handleMouseUp() { switchIsDown = false; }
+
+        function processInput() {
+            if (!isStarted || isWinner || inputBlocked || switchIsDown) return;
+            
+            switchIsDown = true; // Lock until release
+            inputBlocked = true; // Start internal lockout period
+
+            checkMatch();
+        }
+
+        function checkMatch() {
+            if (currentChoices[activeIdx] === currentTarget) {
+                success();
+            } else {
+                fail();
+            }
+        }
+
+        function success() {
+            isWinner = true;
+            playSynth('win', 0.5);
+            if (!lowSensoryMode) triggerMegaParty();
+            setTimeout(nextRound, 4000);
+        }
+
+        function fail() {
+            playSynth('fail', 0.3);
+            removedIndices.push(activeIdx);
+            const el = document.getElementById(`choice-${activeIdx}`);
+            el.style.borderColor = "#FF0000";
+            
+            // Allow input again only after lockoutTime expires
+            setTimeout(() => {
+                updateVisualSelection();
+                inputBlocked = false; 
+            }, lockoutTime);
+        }
+
+        function updateVisualSelection() {
+            for(let i=0; i<3; i++) {
+                const el = document.getElementById(`choice-${i}`);
+                if (removedIndices.includes(i)) {
+                    el.classList.add('removed');
+                    el.classList.remove('active');
+                } else {
+                    el.classList.toggle('active', i === activeIdx);
+                }
+            }
+        }
+
+        function playSynth(type, vol) {
+            const now = audioCtx.currentTime;
+            const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain();
+            osc.connect(gain); gain.connect(audioCtx.destination);
+            if (type === 'tick') {
+                osc.frequency.setValueAtTime(200, now); gain.gain.setValueAtTime(vol, now);
+                gain.gain.exponentialRampToValueAtTime(0.001, now + 0.05); osc.start(); osc.stop(now + 0.05);
+            } else if (type === 'win') {
+                osc.type = 'triangle'; osc.frequency.setValueAtTime(440, now);
+                osc.frequency.exponentialRampToValueAtTime(880, now + 0.5); gain.gain.setValueAtTime(vol, now);
+                gain.gain.exponentialRampToValueAtTime(0.001, now + 0.5); osc.start(); osc.stop(now + 0.5);
+            } else if (type === 'fail') {
+                osc.type = 'sawtooth'; osc.frequency.setValueAtTime(100, now);
+                gain.gain.setValueAtTime(vol, now); gain.gain.exponentialRampToValueAtTime(0.001, now + 0.3);
+                osc.start(); osc.stop(now + 0.3);
+            }
+        }
+
+        // VISUAL EFFECTS
+        let particles = [], lasers = [];
+        function triggerMegaParty() {
+            flash.style.backgroundColor = "white"; flash.style.opacity = 0.5;
+            setTimeout(() => flash.style.opacity = 0, 100);
+            for(let i=0; i<10; i++) lasers.push({x: Math.random()*canvas.width, y: Math.random()*canvas.height, angle: Math.random()*Math.PI*2, life: 1});
+            for(let i=0; i<30; i++) particles.push({x: canvas.width/2, y: canvas.height/2, vx: (Math.random()-0.5)*25, vy: (Math.random()-0.5)*25, life: 1, color: `hsl(${Math.random()*360}, 100%, 50%)`, s: 15});
+        }
+        function drawParticles() {
+            ctx.clearRect(0,0,canvas.width, canvas.height);
+            lasers.forEach(l => { ctx.strokeStyle = `rgba(0, 255, 255, ${l.life})`; ctx.lineWidth = 20*l.life; ctx.beginPath(); ctx.moveTo(l.x, l.y); ctx.lineTo(l.x+Math.cos(l.angle)*2000, l.y+Math.sin(l.angle)*2000); ctx.stroke(); l.life -= 0.02; });
+            particles.forEach(p => { ctx.fillStyle = p.color; ctx.globalAlpha = p.life; ctx.beginPath(); ctx.arc(p.x, p.y, p.s, 0, Math.PI*2); ctx.fill(); p.x += p.vx; p.y += p.vy; p.life -= 0.02; });
+            lasers = lasers.filter(l => l.life > 0); particles = particles.filter(p => p.life > 0);
+            requestAnimationFrame(drawParticles);
+        }
+    </script>
+</body>
+</html>
