@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>MEGA SNAKE - NEON PREDATOR</title>
+    <title>MEGA SNAKE - FIXED START</title>
     <style>
         body { 
             background-color: #000; margin: 0; overflow: hidden; 
@@ -15,33 +15,36 @@
         #home-button {
             position: fixed; top: 15px; left: 15px; z-index: 1000;
             color: white; text-decoration: none; font-size: 24px;
-            background: rgba(255, 255, 255, 0.1); padding: 10px; 
-            border-radius: 10px; opacity: 0.3; transition: opacity 0.3s;
+            background: rgba(255, 255, 255, 0.2); padding: 10px; 
+            border-radius: 10px; opacity: 0.5; transition: opacity 0.3s;
         }
-        #home-button:hover { opacity: 1.0; background: rgba(255, 255, 255, 0.3); }
+
+        /* THE START OVERLAY */
+        #overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: #000; display: flex; 
+            flex-direction: column; justify-content: center; align-items: center; 
+            z-index: 500; cursor: default;
+        }
+
+        .btn-start {
+            font-size: 50px; padding: 30px 60px; border: 8px solid #00FF00;
+            background: #111; color: #00FF00; font-weight: bold;
+            border-radius: 20px; box-shadow: 0 0 30px #00FF00;
+            cursor: pointer; outline: none;
+        }
+        .btn-start:active { transform: scale(0.95); background: #00FF00; color: #000; }
 
         #win-overlay {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
             background: rgba(0,0,0,0.9); display: none; 
             flex-direction: column; justify-content: center; align-items: center; 
-            z-index: 200; text-align: center; pointer-events: none;
-        }
-
-        #overlay {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: #000; color: #00FF00; display: flex; 
-            flex-direction: column; justify-content: center; align-items: center; 
-            z-index: 100; cursor: pointer;
-        }
-        .btn-ui {
-            font-size: 50px; padding: 30px 60px; border: 8px solid #00FF00;
-            background: transparent; color: #00FF00; font-weight: bold;
-            border-radius: 20px; box-shadow: 0 0 30px #00FF00;
+            z-index: 400; text-align: center; pointer-events: none;
         }
 
         canvas { display: block; z-index: 10; }
         #flash { position: fixed; top:0; left:0; width:100%; height:100%; opacity: 0; z-index: 150; pointer-events: none; }
-        #hud { position: absolute; top: 20px; right: 20px; color: #00FF00; font-size: 32px; font-weight: bold; z-index: 50; text-shadow: 0 0 10px #00FF00; }
+        #hud { position: absolute; top: 20px; right: 20px; color: #00FF00; font-size: 32px; font-weight: bold; z-index: 50; }
     </style>
 </head>
 <body onmousedown="handleInput(event)" onkeydown="handleInput(event)">
@@ -49,14 +52,16 @@
     <a id="home-button" href="../index.html">🏠</a>
     <div id="flash"></div>
 
-    <div id="overlay" onclick="startEngine()">
-        <div class="btn-ui">START SNAKE</div>
-        <p style="margin-top: 20px; color: white; font-size: 24px;">(Get 10 Apples to Win!)</p>
+    <!-- START MENU -->
+    <div id="overlay">
+        <button class="btn-start" onclick="startEngine(event)">START SNAKE</button>
+        <p style="margin-top: 20px; color: white; font-size: 20px;">Get 10 Apples to Win!</p>
     </div>
 
+    <!-- WIN SCREEN -->
     <div id="win-overlay">
-        <h2 style="color: #00FF00; font-size: 100px; margin: 0;">AMAZING!</h2>
-        <p style="color: white; font-size: 40px;">YOU ARE A SNAKE MASTER!</p>
+        <h2 style="color: #00FF00; font-size: 80px; margin: 0;">AMAZING!</h2>
+        <p style="color: white; font-size: 30px;">YOU ARE A SNAKE MASTER!</p>
     </div>
 
     <div id="hud">0/10</div>
@@ -74,7 +79,6 @@
         const winOverlay = document.getElementById('win-overlay');
         const bgMusic = document.getElementById('bg-music');
         
-        // --- HUB SETTINGS ---
         const lowSensoryMode = localStorage.getItem('lowSensory') === 'true';
         const isMuted = localStorage.getItem('muteMusic') === 'true';
 
@@ -83,15 +87,25 @@
 
         let snake = [], snakeSize = 15, appleCount = 0;
         let apple = {x: 400, y: 400}, moveBuffer = 0, headSize = 40;
-        
         let particles = [], ripples = [], lasers = [];
 
-        function startEngine() {
-            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        // --- BULLETPROOF START ENGINE ---
+        function startEngine(e) {
+            if (e) e.stopPropagation(); // Stop click from triggering game action instantly
+
+            try {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                if (!isMuted) {
+                    bgMusic.volume = 0.2;
+                    bgMusic.play().catch(err => console.log("Audio skipped"));
+                }
+            } catch (err) {
+                console.log("Web Audio not supported");
+            }
+
             canvas.width = window.innerWidth;
             canvas.height = window.innerHeight;
-            bgMusic.volume = isMuted ? 0 : 0.2;
-            bgMusic.play();
+            
             document.getElementById('overlay').style.display = 'none';
             isStarted = true;
             resetSnake();
@@ -117,15 +131,17 @@
         }
 
         function handleInput(event) {
-            if (event.target.id === 'home-button' || !isStarted || gameState === "win") return;
+            // If the hub settings or home button are clicked, or game not started, do nothing
+            if (!isStarted || gameState === "win") return;
+            if (event.target.id === 'home-button' || event.target.className === 'btn-start') return;
             if (event.type === 'keydown' && event.code !== "Space" && event.code !== "Enter") return;
 
             const now = Date.now();
             if (now - lastPressTime < cooldown) return;
             lastPressTime = now;
 
-            moveBuffer += 350; // Big lunge
-            headSize = 70; // Big head zoom
+            moveBuffer += 350; 
+            headSize = 70; 
             playSynth('kick', 0.8);
 
             if (!lowSensoryMode) {
@@ -162,36 +178,29 @@
         }
 
         function playSynth(type, vol) {
+            if (!audioCtx) return;
             const now = audioCtx.currentTime;
             const osc = audioCtx.createOscillator();
             const gain = audioCtx.createGain();
             osc.connect(gain); gain.connect(audioCtx.destination);
             
             if(type === 'kick') {
-                osc.frequency.setValueAtTime(120, now);
-                osc.frequency.exponentialRampToValueAtTime(0.01, now + 0.3);
-                gain.gain.setValueAtTime(vol, now);
-                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.3);
+                osc.frequency.setValueAtTime(120, now); osc.frequency.exponentialRampToValueAtTime(0.01, now + 0.3);
+                gain.gain.setValueAtTime(vol, now); gain.gain.exponentialRampToValueAtTime(0.01, now + 0.3);
                 osc.start(); osc.stop(now + 0.3);
             } else if (type === 'bite') {
-                osc.frequency.setValueAtTime(300 + (appleCount * 50), now);
-                osc.frequency.exponentialRampToValueAtTime(800 + (appleCount * 50), now + 0.1);
-                gain.gain.setValueAtTime(vol, now);
-                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.1);
+                osc.frequency.setValueAtTime(300 + (appleCount * 50), now); osc.frequency.exponentialRampToValueAtTime(800 + (appleCount * 50), now + 0.1);
+                gain.gain.setValueAtTime(vol, now); gain.gain.exponentialRampToValueAtTime(0.01, now + 0.1);
                 osc.start(); osc.stop(now + 0.1);
             } else if (type === 'win') {
-                osc.type = 'sawtooth';
-                osc.frequency.setValueAtTime(100, now);
-                osc.frequency.exponentialRampToValueAtTime(1200, now + 1);
-                gain.gain.setValueAtTime(vol, now);
-                gain.gain.exponentialRampToValueAtTime(0.01, now + 1);
+                osc.type = 'sawtooth'; osc.frequency.setValueAtTime(100, now); osc.frequency.exponentialRampToValueAtTime(1200, now + 1);
+                gain.gain.setValueAtTime(vol, now); gain.gain.exponentialRampToValueAtTime(0.01, now + 1);
                 osc.start(); osc.stop(now + 1);
             }
         }
 
         function gameLoop() {
-            // Trail effect (semi-transparent clear)
-            ctx.fillStyle = 'rgba(0, 0, 0, 0.15)';
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.2)';
             ctx.fillRect(0, 0, canvas.width, canvas.height);
 
             if (gameState === "play") {
@@ -200,21 +209,63 @@
                 const targetAngle = Math.atan2(dy, dx);
 
                 if (moveBuffer > 0) {
-                    let step = 28; // Fast smooth lunge
+                    let step = 28; 
                     let nextX = snake[0].x + Math.cos(targetAngle) * step;
                     let nextY = snake[0].y + Math.sin(targetAngle) * step;
-                    
                     snake.unshift({ x: nextX, y: nextY });
                     if (snake.length > snakeSize) snake.pop();
                     moveBuffer -= step;
-
-                    // Draw ghost trail during boost
-                    ctx.strokeStyle = "rgba(0, 255, 0, 0.3)";
-                    ctx.lineWidth = 40;
-                    ctx.beginPath();
-                    ctx.moveTo(snake[0].x, snake[0].y);
-                    ctx.lineTo(snake[snake.length-1].x, snake[snake.length-1].y);
-                    ctx.stroke();
                 }
 
-                if (Math.hypot(snake[0].x - ap
+                if (Math.hypot(snake[0].x - apple.x, snake[0].y - apple.y) < 60) {
+                    appleCount++;
+                    hud.innerText = `${appleCount}/10`;
+                    if (appleCount >= 10) winSequence();
+                    else {
+                        playSynth('bite', 0.5);
+                        snakeSize += 8;
+                        spawnApple();
+                        megaCelebration(apple.x, apple.y);
+                    }
+                }
+            }
+
+            if (headSize > 40) headSize -= 1.5;
+
+            // APPLE
+            if (gameState === "play") {
+                let breathe = 1 + Math.sin(Date.now() * 0.005) * 0.2;
+                ctx.fillStyle = '#FF0000'; ctx.shadowBlur = 30 * breathe; ctx.shadowColor = "red";
+                ctx.beginPath(); ctx.arc(apple.x, apple.y, 35 * breathe, 0, Math.PI * 2); ctx.fill();
+                ctx.shadowBlur = 0;
+            }
+
+            // SNAKE
+            snake.forEach((seg, i) => {
+                const hue = (120 + i * 4) % 360;
+                ctx.fillStyle = `hsl(${hue}, 100%, 50%)`;
+                let r = (i === 0) ? headSize : Math.max(30 - (i * 0.6), 10);
+                ctx.beginPath(); ctx.arc(seg.x, seg.y, r, 0, Math.PI * 2); ctx.fill();
+                if(i === 0) { 
+                    ctx.fillStyle = "white";
+                    ctx.beginPath(); ctx.arc(seg.x-12, seg.y-12, 10, 0, Math.PI*2); ctx.fill();
+                    ctx.beginPath(); ctx.arc(seg.x+12, seg.y-12, 10, 0, Math.PI*2); ctx.fill();
+                    ctx.fillStyle = "black";
+                    ctx.beginPath(); ctx.arc(seg.x-12, seg.y-14, 5, 0, Math.PI*2); ctx.fill();
+                    ctx.beginPath(); ctx.arc(seg.x+12, seg.y-14, 5, 0, Math.PI*2); ctx.fill();
+                }
+            });
+
+            // PARTY EFFECTS
+            lasers.forEach(l => { ctx.strokeStyle = `rgba(0, 255, 255, ${l.life})`; ctx.lineWidth = 15*l.life; ctx.beginPath(); ctx.moveTo(l.x, l.y); ctx.lineTo(l.x+Math.cos(l.angle)*2000, l.y+Math.sin(l.angle)*2000); ctx.stroke(); l.life-=0.03; });
+            particles.forEach(p => { ctx.fillStyle = p.color; ctx.globalAlpha = p.life; ctx.beginPath(); ctx.arc(p.x, p.y, p.s, 0, Math.PI*2); ctx.fill(); p.x+=p.vx; p.y+=p.vy; p.life-=0.02; });
+            lasers = lasers.filter(l => l.life > 0); particles = particles.filter(p => p.life > 0);
+            ctx.globalAlpha = 1;
+
+            requestAnimationFrame(gameLoop);
+        }
+
+        window.onresize = () => { canvas.width = window.innerWidth; canvas.height = window.innerHeight; };
+    </script>
+</body>
+</html>
