@@ -11,11 +11,11 @@
         }
         body { background-color: #000; color: white; font-family: sans-serif; margin: 0; padding: 20px; display: flex; flex-direction: column; align-items: center; min-height: 100vh; }
         
-        h1 { color: #fff; font-size: clamp(28px, 5vw, 48px); text-align: center; margin-bottom: 5px; }
+        h1 { color: #fff; font-size: clamp(28px, 5vw, 48px); text-align: center; margin-bottom: 5px; text-shadow: 0 0 15px rgba(255,255,255,0.2); }
         .subtitle { color: #888; margin-bottom: 30px; font-size: 18px; text-align: center; }
 
         /* SENSORY TOGGLE */
-        .sensory-controls { background: #111; padding: 15px 25px; border-radius: 25px; margin-bottom: 40px; border: 2px solid #444; display: flex; align-items: center; gap: 20px; }
+        .sensory-controls { background: #111; padding: 15px 25px; border-radius: 25px; margin-bottom: 40px; border: 2px solid #444; display: flex; align-items: center; gap: 20px; box-shadow: 0 5px 15px rgba(0,0,0,0.5); }
         .toggle-btn { padding: 12px 24px; border-radius: 15px; border: none; cursor: pointer; font-weight: bold; font-size: 16px; transition: 0.3s; }
         .on { background: #ff4444; color: white; }
         .off { background: #44ff44; color: black; }
@@ -26,13 +26,13 @@
         .phase-title { font-size: 24px; font-weight: bold; text-transform: uppercase; letter-spacing: 2px; }
         .phase-desc { color: #888; font-size: 16px; margin-top: 5px; }
 
-        .game-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 20px; }
+        .game-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 20px; }
 
         /* CARDS */
-        .game-card { background: #111; border-radius: 25px; padding: 25px; text-align: center; text-decoration: none; transition: 0.2s; border: 4px solid #222; display: flex; flex-direction: column; align-items: center; }
+        .game-card { background: #111; border-radius: 25px; padding: 25px; text-align: center; text-decoration: none; transition: 0.25s; border: 4px solid #222; display: flex; flex-direction: column; align-items: center; }
         .game-card:hover { transform: scale(1.03); background: #1a1a1a; }
         .game-icon { font-size: 60px; margin-bottom: 10px; }
-        .game-name { font-size: 20px; font-weight: bold; color: #fff; }
+        .game-name { font-size: 18px; font-weight: bold; color: #fff; }
 
         /* PHASE COLORS */
         .ph1 { border-color: var(--p1); color: var(--p1); }
@@ -60,9 +60,10 @@
     <div class="phase-section" style="border-color: var(--p1);">
         <div class="phase-header">
             <div class="phase-title" style="color: var(--p1);">Phase 1: Sensory Agency</div>
-            <div class="phase-desc">Goal: Understand "I press, and something happens." Pure cause and effect.</div>
+            <div class="phase-desc">Goal: Understand "I press, and something happens." Massive immediate feedback.</div>
         </div>
         <div class="game-grid">
+            <a href="burst/index.html" class="game-card ph1"><span class="game-icon">💥</span><span class="game-name">Neon Burst</span></a>
             <a href="dj-party/index.html" class="game-card ph1"><span class="game-icon">🎧</span><span class="game-name">DJ Party</span></a>
             <a href="bubbles/index.html" class="game-card ph1"><span class="game-icon">🫧</span><span class="game-name">Bubble Pop</span></a>
             <a href="canvas/index.html" class="game-card ph1"><span class="game-icon">🎨</span><span class="game-name">Neon Canvas</span></a>
@@ -73,7 +74,7 @@
     <div class="phase-section" style="border-color: var(--p2);">
         <div class="phase-header">
             <div class="phase-title" style="color: var(--p2);">Phase 2: Sustained Action</div>
-            <div class="phase-desc">Goal: Repeated pressing moves an object through space.</div>
+            <div class="phase-desc">Goal: Repeated pressing results in continuous movement or progress.</div>
         </div>
         <div class="game-grid">
             <a href="snake/index.html" class="game-card ph2"><span class="game-icon">🐍</span><span class="game-name">Mega Snake</span></a>
@@ -85,7 +86,7 @@
     <div class="phase-section" style="border-color: var(--p3);">
         <div class="phase-header">
             <div class="phase-title" style="color: var(--p3);">Phase 3: Persistence</div>
-            <div class="phase-desc">Goal: Multi-step process with a delayed high-value reward.</div>
+            <div class="phase-desc">Goal: Follow a multi-step sequence to reach a big finale.</div>
         </div>
         <div class="game-grid">
             <a href="rocket/index.html" class="game-card ph3"><span class="game-icon">🚀</span><span class="game-name">Mega Rocket</span></a>
@@ -97,7 +98,7 @@
     <div class="phase-section" style="border-color: var(--p4);">
         <div class="phase-header">
             <div class="phase-title" style="color: var(--p4);">Phase 4: Timing (Action on Cue)</div>
-            <div class="phase-desc">Goal: Press only when the world is ready. Teaches waiting and inhibitory control.</div>
+            <div class="phase-desc">Goal: Waiting for the right moment. Teaches inhibitory control.</div>
         </div>
         <div class="game-grid">
             <a href="log-hop/index.html" class="game-card ph4"><span class="game-icon">🪵</span><span class="game-name">Mega Log Hop</span></a>
@@ -108,7 +109,7 @@
     <div class="phase-section" style="border-color: var(--p5);">
         <div class="phase-header">
             <div class="phase-title" style="color: var(--p5);">Phase 5: Visual Matching</div>
-            <div class="phase-desc">Goal: Choice making. Select the icon that matches the target.</div>
+            <div class="phase-desc">Goal: Choice making. Scanned selection of matching icons.</div>
         </div>
         <div class="game-grid">
             <a href="match/index.html" class="game-card ph5"><span class="game-icon">🎯</span><span class="game-name">Target Match</span></a>
@@ -119,7 +120,7 @@
     <div class="phase-section" style="border-color: var(--p6);">
         <div class="phase-header">
             <div class="phase-title" style="color: var(--p6);">Phase 6: Logic & Categorization</div>
-            <div class="phase-desc">Goal: Identify groups. Sort by size, color temperature, or category.</div>
+            <div class="phase-desc">Goal: Logical grouping. Sort by size, color temp, or category.</div>
         </div>
         <div class="game-grid">
             <a href="sort/index.html" class="game-card ph6"><span class="game-icon">📦</span><span class="game-name">Logic Sort</span></a>
@@ -130,7 +131,7 @@
     <div class="phase-section" style="border-color: var(--p7);">
         <div class="phase-header">
             <div class="phase-title" style="color: var(--p7);">Phase 7: Pre-Communication</div>
-            <div class="phase-desc">Goal: Using scanning to request items or express a state.</div>
+            <div class="phase-desc">Goal: Using scanning to request items or express needs.</div>
         </div>
         <div class="game-grid">
             <div class="game-card" style="opacity: 0.3; border-color: var(--p7);"><span class="game-icon">💬</span><span class="game-name">Coming Soon</span></div>
@@ -139,7 +140,7 @@
 
     <footer>
         <a href="https://ko-fi.com/nocoast" target="_blank" class="kofi-button">☕ Support this project on Ko-fi</a>
-        <p style="color:#444; font-size: 12px; margin-top:20px;">MIT License - Free for schools & parents.</p>
+        <p style="color:#444; font-size: 12px; margin-top:20px;">Released under the MIT License.</p>
     </footer>
 
     <script>
