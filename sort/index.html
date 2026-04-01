@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>CATEGORY SORT - PHASE 6</title>
+    <title>LOGIC SORT - MOTION EDITION</title>
     <style>
         body { 
             background-color: #000; margin: 0; overflow: hidden; 
@@ -24,7 +24,7 @@
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
             background: #000; color: #FFF; display: flex; 
             flex-direction: column; justify-content: center; align-items: center; 
-            z-index: 100; text-align: center;
+            z-index: 500; text-align: center;
         }
         .settings-card {
             background: #111; padding: 30px; border-radius: 30px;
@@ -36,12 +36,15 @@
             border-radius: 20px; cursor: pointer; margin-top: 20px;
         }
 
-        #item-display { font-size: 150px; margin-bottom: 50px; transition: 0.5s; z-index: 10; }
+        #item-display { 
+            position: absolute; font-size: 150px; transition: transform 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 0.3s; 
+            z-index: 100; top: 30%; 
+        }
         
-        .bin-container { display: flex; gap: 40px; z-index: 10; width: 90%; justify-content: center; }
+        .bin-container { position: absolute; bottom: 10%; display: flex; gap: 40px; width: 90%; justify-content: center; z-index: 10; }
         .bin {
-            width: 300px; height: 200px; border: 8px solid #333;
-            border-radius: 25px; display: flex; flex-direction: column;
+            width: 320px; height: 220px; border: 8px solid #333;
+            border-radius: 30px; display: flex; flex-direction: column;
             justify-content: center; align-items: center; background: #080808;
             transition: 0.3s;
         }
@@ -49,8 +52,8 @@
         .bin-icons { font-size: 50px; }
 
         .active {
-            border-color: #00FFFF; transform: scale(1.1);
-            box-shadow: 0 0 60px rgba(0, 255, 255, 0.5); background: #111;
+            border-color: #00FFFF; transform: scale(1.05);
+            box-shadow: 0 0 60px rgba(0, 255, 255, 0.4); background: #111;
         }
         .active .bin-label { color: #00FFFF; }
 
@@ -71,6 +74,8 @@
             
             <p>Sort By:</p>
             <select id="set-select" style="font-size:22px; padding:10px; border-radius:10px; width:100%;">
+                <option value="sky-ground">Environment (Sky vs Ground)</option>
+                <option value="emotions">Feelings (Happy vs Sad)</option>
                 <option value="size">Size (Big vs Small)</option>
                 <option value="colors">Color (Warm vs Cool)</option>
                 <option value="food-animals">Category (Food vs Animals)</option>
@@ -96,23 +101,31 @@
         const itemDisplay = document.getElementById('item-display');
         
         const lowSensoryMode = localStorage.getItem('lowSensory') === 'true';
+        const isMuted = localStorage.getItem('muteMusic') === 'true';
 
         let audioCtx, isStarted = false, isWinner = false;
         let switchIsDown = false, inputBlocked = false;
 
-        // --- CATEGORY DATA ---
         const categories = {
+            'sky-ground': {
+                bin0: { label: 'SKY', icons: '☁️🚀', items: ['☁️', '🚀', '🛸', '🦅', '☀️'] },
+                bin1: { label: 'GROUND', icons: '🪴🏠', items: ['🪴', '🏠', '🧱', '🚜', '🍄'] }
+            },
+            'emotions': {
+                bin0: { label: 'HAPPY', icons: '😊🥳', items: ['😊', '🥳', '😄', '🎈', '🍭'] },
+                bin1: { label: 'SAD', icons: '😢☹️', items: ['😢', '☹️', '😭', '🩹', '⛈️'] }
+            },
             'size': {
-                bin0: { label: 'BIG', icons: '🐘🏯', items: ['🐘', '🐳', '🏢', '🦖', '🚛'], type: 'large' },
-                bin1: { label: 'SMALL', icons: '🐜🐭', items: ['🐜', '🐭', '🍓', '🐝', '📎'], type: 'small' }
+                bin0: { label: 'BIG', icons: '🐘🏯', items: ['🐘', '🐳', '🏢', '🦖', '🚛'] },
+                bin1: { label: 'SMALL', icons: '🐜🐭', items: ['🐜', '🐭', '🍓', '🐝', '📎'] }
             },
             'colors': {
-                bin0: { label: 'WARM', icons: '🍎🔥', items: ['🍎', '🔥', '🦀', '🍊', '🍓'], type: 'warm' },
-                bin1: { label: 'COOL', icons: '❄️🧊', items: ['❄️', '🐳', '💎', '🍇', '🫐'], type: 'cool' }
+                bin0: { label: 'WARM', icons: '🍎🔥', items: ['🍎', '🔥', '🦀', '🍊', '🍓'] },
+                bin1: { label: 'COOL', icons: '❄️🧊', items: ['❄️', '🐳', '💎', '🍇', '🫐'] }
             },
             'food-animals': {
-                bin0: { label: 'FOOD', icons: '🍎🍕', items: ['🍎', '🍕', '🍩', '🍔', '🍦'], type: 'food' },
-                bin1: { label: 'ANIMALS', icons: '🐶🐱', items: ['🐶', '🐱', '🦁', '🐘', '🐸'], type: 'animal' }
+                bin0: { label: 'FOOD', icons: '🍎🍕', items: ['🍎', '🍕', '🍩', '🍔', '🍦'] },
+                bin1: { label: 'ANIMALS', icons: '🐶🐱', items: ['🐶', '🐱', '🦁', '🐘', '🐸'] }
             }
         };
 
@@ -148,7 +161,8 @@
         }
 
         function speak(text) {
-            window.speechSynthesis.cancel(); // Stop current speech
+            if (isMuted) return;
+            window.speechSynthesis.cancel();
             const msg = new SpeechSynthesisUtterance(text);
             msg.rate = 0.9;
             window.speechSynthesis.speak(msg);
@@ -162,10 +176,11 @@
             const item = pool[Math.floor(Math.random() * pool.length)];
             
             itemDisplay.innerText = item;
-            itemDisplay.style.transform = "scale(1)";
+            itemDisplay.style.top = "30%";
+            itemDisplay.style.left = "50%";
+            itemDisplay.style.transform = "translate(-50%, -50%) scale(1)";
             itemDisplay.style.opacity = "1";
 
-            // Visual Cue for "Size" mode
             if (activeSet === 'size') {
                 itemDisplay.style.fontSize = (correctAnswer === 0) ? "250px" : "60px";
             } else {
@@ -180,14 +195,8 @@
                 activeIdx = (activeIdx + 1) % 2;
                 updateVisualSelection();
                 playSynth('tick', 0.1);
-                
-                // --- SPEAK THE BIN LABEL ---
-                const label = document.getElementById(`label-${activeIdx}`).innerText;
-                speak(label);
-
+                speak(document.getElementById(`label-${activeIdx}`).innerText);
             }, scanSpeed);
-            updateVisualSelection();
-            speak(document.getElementById(`label-${activeIdx}`).innerText);
         }
 
         function updateVisualSelection() {
@@ -210,11 +219,20 @@
         function success() {
             isWinner = true;
             playSynth('win', 0.5);
-            speak("Yes! Correct.");
-            itemDisplay.style.transform = `translateY(400px) scale(0.1)`;
+            speak("Yes!");
+
+            // --- ANIMATE TO BIN ---
+            const targetBin = document.getElementById(`bin-${correctAnswer}`).getBoundingClientRect();
+            const tx = targetBin.left + targetBin.width / 2;
+            const ty = targetBin.top + targetBin.height / 2;
+
+            itemDisplay.style.left = tx + "px";
+            itemDisplay.style.top = ty + "px";
+            itemDisplay.style.transform = "translate(-50%, -50%) scale(0.2) rotate(360deg)";
             itemDisplay.style.opacity = "0";
+            
             if (!lowSensoryMode) triggerMegaParty();
-            setTimeout(nextRound, 3500);
+            setTimeout(nextRound, 3000);
         }
 
         function fail() {
@@ -223,12 +241,12 @@
             speak("Try again.");
             const el = document.getElementById(`bin-${activeIdx}`);
             el.style.borderColor = "#FF0000";
-            itemDisplay.style.transform = "translateX(30px)"; 
+            itemDisplay.style.transform = "translate(-40%, -50%)"; // Shake
             setTimeout(() => {
                 el.style.borderColor = "#333";
-                itemDisplay.style.transform = "translateX(0px)";
+                itemDisplay.style.transform = "translate(-50%, -50%)";
                 inputBlocked = false;
-            }, 1000);
+            }, 800);
         }
 
         function playSynth(type, vol) {
@@ -251,14 +269,14 @@
 
         let particles = [], lasers = [];
         function triggerMegaParty() {
-            flash.style.backgroundColor = "white"; flash.style.opacity = 0.3;
+            flash.style.backgroundColor = "white"; flash.style.opacity = 0.2;
             setTimeout(() => flash.style.opacity = 0, 100);
-            for(let i=0; i<8; i++) lasers.push({x: Math.random()*canvas.width, y: Math.random()*canvas.height, angle: Math.random()*Math.PI*2, life: 1});
-            for(let i=0; i<20; i++) particles.push({x: canvas.width/2, y: canvas.height/2, vx: (Math.random()-0.5)*25, vy: (Math.random()-0.5)*25, life: 1, color: '#00FFFF', s: 15});
+            for(let i=0; i<6; i++) lasers.push({x: Math.random()*canvas.width, y: Math.random()*canvas.height, angle: Math.random()*Math.PI*2, life: 1});
+            for(let i=0; i<15; i++) particles.push({x: canvas.width/2, y: canvas.height/2, vx: (Math.random()-0.5)*25, vy: (Math.random()-0.5)*25, life: 1, color: '#00FFFF', s: 12});
         }
         function drawParticles() {
             ctx.clearRect(0,0,canvas.width, canvas.height);
-            lasers.forEach(l => { ctx.strokeStyle = `rgba(0, 255, 255, ${l.life})`; ctx.lineWidth = 15*l.life; ctx.beginPath(); ctx.moveTo(l.x, l.y); ctx.lineTo(l.x+Math.cos(l.angle)*2000, l.y+Math.sin(l.angle)*2000); ctx.stroke(); l.life -= 0.03; });
+            lasers.forEach(l => { ctx.strokeStyle = `rgba(0, 255, 255, ${l.life})`; ctx.lineWidth = 10*l.life; ctx.beginPath(); ctx.moveTo(l.x, l.y); ctx.lineTo(l.x+Math.cos(l.angle)*2000, l.y+Math.sin(l.angle)*2000); ctx.stroke(); l.life -= 0.03; });
             particles.forEach(p => { ctx.fillStyle = p.color; ctx.globalAlpha = p.life; ctx.beginPath(); ctx.arc(p.x, p.y, p.s, 0, Math.PI*2); ctx.fill(); p.x += p.vx; p.y += p.vy; p.life -= 0.02; });
             lasers = lasers.filter(l => l.life > 0); particles = particles.filter(p => p.life > 0);
             requestAnimationFrame(drawParticles);
