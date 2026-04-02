@@ -3,40 +3,46 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>MEGA ROCKET - LUNAR MISSION</title>
+    <title>MEGA ROCKET - PRO</title>
     <style>
         body { 
             background-color: #000; margin: 0; overflow: hidden; 
-            display: flex; justify-content: center; align-items: center; 
-            height: 100vh; font-family: 'Arial Black', sans-serif;
+            display: flex; flex-direction: column; justify-content: center; 
+            align-items: center; height: 100vh; font-family: sans-serif;
             user-select: none; touch-action: manipulation;
         }
 
+        /* UNOBTRUSIVE HOME */
         #home-button {
             position: fixed; top: 15px; left: 15px; z-index: 1000;
             color: white; text-decoration: none; font-size: 24px;
-            background: rgba(255, 255, 255, 0.2); padding: 10px; 
-            border-radius: 10px; opacity: 0.5; transition: opacity 0.3s;
+            background: rgba(255, 255, 255, 0.1); padding: 10px; 
+            border-radius: 12px; opacity: 0.3; transition: 0.3s;
+            border: 1px solid rgba(255,255,255,0.2);
         }
+        #home-button:hover { opacity: 1.0; background: rgba(255, 255, 255, 0.2); }
 
+        /* PRO START BUTTON */
         #overlay, #win-overlay {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
             background: #000; display: flex; 
             flex-direction: column; justify-content: center; align-items: center; 
-            z-index: 500; cursor: default;
+            z-index: 500;
         }
-        #win-overlay { background: rgba(0,0,0,0.95); display: none; z-index: 600; pointer-events: none; }
+        #win-overlay { background: rgba(0,0,0,0.9); display: none; z-index: 600; pointer-events: none;}
 
         .btn-start {
-            font-size: 50px; padding: 30px 60px; border: 8px solid #FF4500;
-            background: #111; color: #FF4500; font-weight: bold;
-            border-radius: 20px; box-shadow: 0 0 30px #FF4500;
-            cursor: pointer; outline: none;
+            font-size: 40px; padding: 25px 50px; border: 4px solid #FF4500;
+            background: transparent; color: #FF4500; font-weight: bold;
+            border-radius: 20px; cursor: pointer; box-shadow: 0 0 20px rgba(255,69,0,0.3);
+            transition: 0.2s;
         }
+        .btn-start:hover { background: #FF4500; color: #000; }
 
-        canvas { display: block; z-index: 10; }
+        canvas { display: block; position: absolute; top: 0; left: 0; }
         #flash { position: fixed; top:0; left:0; width:100%; height:100%; opacity: 0; z-index: 150; pointer-events: none; }
-        #hud { position: absolute; top: 20px; right: 20px; color: #FF4500; font-size: 32px; font-weight: bold; z-index: 50; }
+        
+        #hud { position: absolute; top: 20px; right: 20px; color: #FF4500; font-size: 22px; font-weight: bold; opacity: 0.6; z-index: 50; text-align: right; line-height: 1.4; }
     </style>
 </head>
 <body onmousedown="handleInput(event)" onkeydown="handleInput(event)">
@@ -46,15 +52,19 @@
 
     <div id="overlay">
         <button class="btn-start" onclick="startEngine(event)">START MISSION</button>
-        <p style="margin-top: 20px; color: white; font-size: 24px;">Build and Launch!</p>
+        <p style="color: #666; margin-top: 20px; letter-spacing: 1px;">PHASE 3: PERSISTENCE & SEQUENCING</p>
     </div>
 
     <div id="win-overlay">
-        <h2 style="color: #FF4500; font-size: 100px; margin: 0;">LUNAR LANDING!</h2>
-        <p style="color: white; font-size: 40px;">MISSION ACCOMPLISHED!</p>
+        <h2 style="color: #FF4500; font-size: 80px; margin: 0;">LUNAR ARRIVAL!</h2>
+        <p style="color: white; font-size: 32px;">MISSION ACCOMPLISHED!</p>
     </div>
 
-    <div id="hud">0/10</div>
+    <div id="hud">
+        STEP: <span id="step-count">0</span>/10<br>
+        LAUNCHES: <span id="win-count">0</span>
+    </div>
+    
     <canvas id="gameCanvas"></canvas>
 
     <audio id="bg-music" loop preload="auto">
@@ -65,31 +75,33 @@
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
         const flash = document.getElementById('flash');
-        const hud = document.getElementById('hud');
-        const winOverlay = document.getElementById('win-overlay');
         const bgMusic = document.getElementById('bg-music');
+        const stepDisplay = document.getElementById('step-count');
+        const winDisplay = document.getElementById('win-count');
+        const winOverlay = document.getElementById('win-overlay');
         
+        // --- PRO HUB SETTINGS ---
         const lowSensoryMode = localStorage.getItem('lowSensory') === 'true';
         const isMuted = localStorage.getItem('muteMusic') === 'true';
 
         let audioCtx, isStarted = false, gameState = "build";
-        let lastPressTime = 0, cooldown = 400, switchIsDown = false;
+        let lastPressTime = 0, cooldown = 400;
+        let pressCount = 0, totalLaunches = 0;
+        let switchIsDown = false;
 
-        let pressCount = 0;
-        let rocketY = 0, rocketX = 0;
+        // Space Objects
+        let rocketX, rocketY, earthY, moonY = -1500;
+        let stars = [], particles = [], lasers = [];
         let shake = 0;
-        let particles = [], lasers = [], stars = [];
-        let moonY = -1000, earthY = 0;
-
         let activePart = { id: 0, x: -500, y: 0, progress: 1 };
 
         function startEngine(e) {
             if(e) e.stopPropagation();
             try {
                 audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-                if (!isMuted) { bgMusic.volume = 0.2; bgMusic.play(); }
+                if (!isMuted) { bgMusic.volume = 0.15; bgMusic.play(); }
             } catch (err) {}
-            
+
             canvas.width = window.innerWidth;
             canvas.height = window.innerHeight;
             rocketX = canvas.width / 2;
@@ -110,23 +122,30 @@
 
             switchIsDown = true;
             pressCount++;
-            hud.innerText = `${pressCount}/10`;
+            stepDisplay.innerText = pressCount;
+
+            // --- DATA COLLECTION: LOG STEP TO HUB ---
+            let totalS = parseInt(localStorage.getItem('statSuccess') || 0);
+            localStorage.setItem('statSuccess', totalS + 1);
 
             if (pressCount <= 7) {
+                // Assembly Phase
                 activePart = { id: pressCount, x: Math.random() > 0.5 ? -400 : canvas.width + 400, y: Math.random() * canvas.height, progress: 0 };
                 playSynth('weld', 0.5);
                 if(!lowSensoryMode) spawnSparks(rocketX, rocketY);
             } else if (pressCount <= 9) {
-                shake = (pressCount - 7) * 5;
+                // Fueling Phase
+                shake = (pressCount - 7) * 8;
                 playSynth('charge', 0.6);
             } else {
+                // Launch Phase
                 launchRocket();
             }
 
             if (!lowSensoryMode) {
-                flash.style.backgroundColor = "rgba(255, 255, 255, 0.2)";
+                flash.style.backgroundColor = "rgba(255, 69, 0, 0.2)";
                 flash.style.opacity = 1;
-                setTimeout(() => flash.style.opacity = 0, 80);
+                setTimeout(() => flash.style.opacity = 0, 100);
             }
             if (navigator.vibrate) navigator.vibrate(60);
         }
@@ -142,18 +161,18 @@
             osc.connect(gain); gain.connect(audioCtx.destination);
             
             if (type === 'weld') {
-                osc.type = 'square'; osc.frequency.setValueAtTime(1200, now);
+                osc.type = 'square'; osc.frequency.setValueAtTime(1000, now);
                 osc.frequency.exponentialRampToValueAtTime(100, now + 0.1);
                 gain.gain.setValueAtTime(vol, now); gain.gain.exponentialRampToValueAtTime(0.01, now + 0.1);
                 osc.start(); osc.stop(now + 0.1);
             } else if (type === 'charge') {
                 osc.frequency.setValueAtTime(200 + (pressCount * 100), now);
-                osc.frequency.linearRampToValueAtTime(600 + (pressCount * 100), now + 0.2);
-                gain.gain.setValueAtTime(vol, now); gain.gain.exponentialRampToValueAtTime(0.01, now + 0.2);
-                osc.start(); osc.stop(now + 0.2);
+                osc.frequency.linearRampToValueAtTime(800 + (pressCount * 100), now + 0.3);
+                gain.gain.setValueAtTime(vol, now); gain.gain.exponentialRampToValueAtTime(0.01, now + 0.3);
+                osc.start(); osc.stop(now + 0.3);
             } else if (type === 'blast') {
                 osc.type = 'sawtooth'; osc.frequency.setValueAtTime(60, now);
-                osc.frequency.exponentialRampToValueAtTime(1500, now + 4);
+                osc.frequency.exponentialRampToValueAtTime(1800, now + 4);
                 gain.gain.setValueAtTime(vol, now); gain.gain.exponentialRampToValueAtTime(0.01, now + 4);
                 osc.start(); osc.stop(now + 4);
             }
@@ -166,54 +185,73 @@
 
         function spawnSparks(x, y) {
             for(let i=0; i<15; i++) {
-                particles.push({ x, y, vx: (Math.random()-0.5)*20, vy: (Math.random()-0.5)*20, life: 1, color: "cyan", s: 4 });
+                particles.push({ x, y, vx: (Math.random()-0.5)*30, vy: (Math.random()-0.5)*30, life: 1, color: "cyan", s: 5 });
             }
+        }
+
+        function winSequence() {
+            gameState = "party";
+            totalLaunches++;
+            winDisplay.innerText = totalLaunches;
+            winOverlay.style.display = 'flex';
+            
+            let winTimer = setInterval(() => {
+                if (!lowSensoryMode) megaCelebration(Math.random()*canvas.width, Math.random()*canvas.height);
+            }, 400);
+
+            setTimeout(() => {
+                clearInterval(winTimer);
+                resetGame();
+            }, 7000);
+        }
+
+        function megaCelebration(x, y) {
+            flash.style.backgroundColor = "white"; flash.style.opacity = 0.2;
+            setTimeout(() => flash.style.opacity = 0, 100);
+            for(let i=0; i<8; i++) lasers.push({x, y, angle: Math.random()*Math.PI*2, life: 1});
+            for(let i=0; i<20; i++) particles.push({ x, y, vx: (Math.random()-0.5)*25, vy: (Math.random()-0.5)*25, life: 1, color: `hsl(${Math.random()*360}, 100%, 50%)`, s: 15 });
+        }
+
+        function resetGame() {
+            pressCount = 0; gameState = "build"; shake = 0;
+            moonY = -1500; earthY = canvas.height * 0.75;
+            stepDisplay.innerText = `0`; winOverlay.style.display = 'none';
         }
 
         function gameLoop() {
             ctx.fillStyle = 'black';
             ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-            // 1. Nebula Glow
-            let grd = ctx.createRadialGradient(canvas.width/2, canvas.height/2, 10, canvas.width/2, canvas.height/2, canvas.width);
-            grd.addColorStop(0, '#0a0015'); grd.addColorStop(1, 'black');
-            ctx.fillStyle = grd; ctx.fillRect(0,0,canvas.width,canvas.height);
-
-            // 2. Objects in Space
+            // 1. Parallax Stars
             ctx.fillStyle = "white";
             stars.forEach(s => {
-                if (gameState === "launch") s.y += 25;
+                if (gameState === "launch") s.y += 30;
                 if (s.y > canvas.height) s.y = 0;
                 ctx.beginPath(); ctx.arc(s.x, s.y, s.s, 0, Math.PI*2); ctx.fill();
             });
 
-            // Pass Earth
-            if (gameState === "launch") earthY += 10;
-            ctx.fillStyle = "#1e90ff";
-            ctx.beginPath(); ctx.arc(canvas.width/2, earthY + 600, 500, 0, Math.PI*2); ctx.fill();
-
-            // Reach Moon
+            // 2. Earth & Moon Journey
             if (gameState === "launch") {
-                moonY += 12;
+                earthY += 8;
+                moonY += 14;
                 if (moonY > canvas.height/2 - 200 && gameState !== "party") winSequence();
             }
+            // Draw Earth
+            ctx.fillStyle = "#1e90ff";
+            ctx.beginPath(); ctx.arc(canvas.width/2, earthY + 800, 600, 0, Math.PI*2); ctx.fill();
+            // Draw Moon
             ctx.fillStyle = "#ddd";
-            ctx.beginPath(); ctx.arc(canvas.width/2, moonY, 300, 0, Math.PI*2); ctx.fill();
-            ctx.fillStyle = "#bbb"; // Craters
-            ctx.beginPath(); ctx.arc(canvas.width/2 - 50, moonY + 40, 40, 0, Math.PI*2); ctx.fill();
-            ctx.beginPath(); ctx.arc(canvas.width/2 + 80, moonY - 60, 25, 0, Math.PI*2); ctx.fill();
+            ctx.beginPath(); ctx.arc(canvas.width/2, moonY, 350, 0, Math.PI*2); ctx.fill();
 
-            // 3. Rocket Physics
+            // 3. Assembly Animation
+            if (activePart.progress < 1) activePart.progress += 0.12;
+
+            // 4. Rocket Shaking/Drawing
             if (shake > 0) shake *= 0.9;
             let currentX = rocketX + (Math.random()*shake - shake/2);
             let drawY = rocketY;
 
-            if (gameState === "launch") {
-                drawY = rocketY; // Stays center-ish as world moves
-                spawnSmoke(currentX, drawY + 100);
-            }
-
-            if (activePart.progress < 1) activePart.progress += 0.12;
+            if (gameState === "launch") spawnSmoke(currentX, drawY + 100);
 
             drawRocket(currentX, drawY);
             drawFuelGauge();
@@ -223,27 +261,18 @@
 
         function drawFuelGauge() {
             if (pressCount < 8 || gameState === "party") return;
-            const gx = 60, gy = canvas.height * 0.2, gw = 50, gh = canvas.height * 0.6;
-            ctx.strokeStyle = "#444"; ctx.lineWidth = 10; ctx.strokeRect(gx, gy, gw, gh);
+            const gx = 60, gy = canvas.height * 0.2, gw = 40, gh = canvas.height * 0.6;
+            ctx.strokeStyle = "#444"; ctx.lineWidth = 6; ctx.strokeRect(gx, gy, gw, gh);
             let fuelLevel = pressCount === 8 ? 0.5 : 1.0;
             if (gameState === "launch") fuelLevel = 1;
             ctx.fillStyle = "#00FF00";
-            ctx.shadowBlur = 20; ctx.shadowColor = "#00FF00";
+            ctx.shadowBlur = 15; ctx.shadowColor = "#00FF00";
             ctx.fillRect(gx, gy + gh - (gh * fuelLevel), gw, gh * fuelLevel);
             ctx.shadowBlur = 0;
         }
 
         function drawRocket(rx, ry) {
             if (pressCount < 1) return;
-
-            // DRAW LAUNCH PAD
-            if (gameState === "build") {
-                ctx.fillStyle = "#222";
-                ctx.fillRect(rx - 150, ry + 80, 300, 40);
-                ctx.strokeStyle = "#FF4500"; ctx.lineWidth = 4;
-                ctx.strokeRect(rx - 150, ry + 80, 300, 40);
-            }
-
             const drawPart = (id, func) => {
                 ctx.save();
                 if (activePart.id === id && activePart.progress < 1) {
@@ -255,13 +284,13 @@
                 func(); ctx.restore();
             };
 
-            drawPart(1, () => { ctx.fillStyle = "#666"; ctx.beginPath(); ctx.moveTo(-80, 80); ctx.lineTo(-40, 40); ctx.lineTo(-40, 80); ctx.closePath(); ctx.fill(); }); // L Fin
-            drawPart(2, () => { ctx.fillStyle = "#666"; ctx.beginPath(); ctx.moveTo(80, 80); ctx.lineTo(40, 40); ctx.lineTo(40, 80); ctx.closePath(); ctx.fill(); });  // R Fin
-            drawPart(3, () => { ctx.fillStyle = "#444"; ctx.fillRect(-30, 80, 60, 25); }); // Engine
-            drawPart(4, () => { ctx.fillStyle = "#DDD"; ctx.fillRect(-50, 0, 100, 80); });  // Low Body
-            drawPart(5, () => { ctx.fillStyle = "#FFF"; ctx.fillRect(-50, -80, 100, 80); }); // Up Body
-            drawPart(6, () => { ctx.fillStyle = "#FF0000"; ctx.beginPath(); ctx.moveTo(-50, -80); ctx.lineTo(50, -80); ctx.lineTo(0, -190); ctx.closePath(); ctx.fill(); }); // Nose
-            drawPart(7, () => { ctx.fillStyle = "#00FFFF"; ctx.beginPath(); ctx.arc(0, -35, 28, 0, Math.PI*2); ctx.fill(); ctx.strokeStyle="white"; ctx.lineWidth=4; ctx.stroke(); }); // Window
+            drawPart(1, () => { ctx.fillStyle = "#555"; ctx.beginPath(); ctx.moveTo(-80, 80); ctx.lineTo(-40, 40); ctx.lineTo(-40, 80); ctx.closePath(); ctx.fill(); }); 
+            drawPart(2, () => { ctx.fillStyle = "#555"; ctx.beginPath(); ctx.moveTo(80, 80); ctx.lineTo(40, 40); ctx.lineTo(40, 80); ctx.closePath(); ctx.fill(); });  
+            drawPart(3, () => { ctx.fillStyle = "#333"; ctx.fillRect(-30, 80, 60, 20); }); 
+            drawPart(4, () => { ctx.fillStyle = "#CCC"; ctx.fillRect(-50, 0, 100, 80); });  
+            drawPart(5, () => { ctx.fillStyle = "#FFF"; ctx.fillRect(-50, -80, 100, 80); }); 
+            drawPart(6, () => { ctx.fillStyle = "#FF0000"; ctx.beginPath(); ctx.moveTo(-50, -80); ctx.lineTo(50, -80); ctx.lineTo(0, -190); ctx.closePath(); ctx.fill(); }); 
+            drawPart(7, () => { ctx.fillStyle = "#00FFFF"; ctx.beginPath(); ctx.arc(0, -35, 25, 0, Math.PI*2); ctx.fill(); ctx.strokeStyle="white"; ctx.lineWidth=3; ctx.stroke(); }); 
 
             if (gameState === "launch") {
                 ctx.save(); ctx.translate(rx, ry);
@@ -274,34 +303,14 @@
         }
 
         function spawnSmoke(x, y) {
-            for(let i=0; i<6; i++) particles.push({ x: x+(Math.random()*80-40), y: y, vx: (Math.random()-0.5)*10, vy: 15+Math.random()*15, life: 1, color: "rgba(200,200,200,0.5)", s: 20+Math.random()*30 });
-        }
-
-        function winSequence() {
-            gameState = "party";
-            winOverlay.style.display = 'flex';
-            let winTimer = setInterval(() => { if (!lowSensoryMode) megaCelebration(Math.random()*canvas.width, Math.random()*canvas.height); }, 400);
-            setTimeout(() => { clearInterval(winTimer); resetGame(); }, 7000);
-        }
-
-        function megaCelebration(x, y) {
-            flash.style.backgroundColor = "white"; flash.style.opacity = 0.3;
-            setTimeout(() => flash.style.opacity = 0, 100);
-            for(let i=0; i<10; i++) lasers.push({x, y, angle: Math.random()*Math.PI*2, life: 1});
-            for(let i=0; i<25; i++) particles.push({ x, y, vx: (Math.random()-0.5)*25, vy: (Math.random()-0.5)*25, life: 1, color: `hsl(${Math.random()*360}, 100%, 50%)`, s: 15 });
+            for(let i=0; i<5; i++) particles.push({ x: x+(Math.random()*80-40), y: y, vx: (Math.random()-0.5)*10, vy: 15+Math.random()*15, life: 1, color: "rgba(200,200,200,0.4)", s: 20+Math.random()*30 });
         }
 
         function drawEffects() {
             lasers.forEach(l => { ctx.strokeStyle = `rgba(255, 69, 0, ${l.life})`; ctx.lineWidth = 20*l.life; ctx.beginPath(); ctx.moveTo(l.x, l.y); ctx.lineTo(l.x+Math.cos(l.angle)*2500, l.y+Math.sin(l.angle)*2500); ctx.stroke(); l.life-=0.02; });
-            particles.forEach(p => { ctx.fillStyle = p.color; ctx.globalAlpha = p.life; ctx.beginPath(); ctx.arc(p.x, p.y, p.s, 0, Math.PI*2); ctx.fill(); p.x+=p.vx; p.y+=p.vy; p.life-=0.015; });
+            particles.forEach(p => { ctx.fillStyle = p.color; ctx.globalAlpha = p.life; ctx.beginPath(); ctx.arc(p.x, p.y, p.s, 0, Math.PI*2); ctx.fill(); p.x+=p.vx; p.y+=p.vy; p.life-=0.02; });
             lasers = lasers.filter(l => l.life > 0); particles = particles.filter(p => p.life > 0);
             ctx.globalAlpha = 1;
-        }
-
-        function resetGame() {
-            pressCount = 0; gameState = "build"; shake = 0;
-            moonY = -1000; earthY = canvas.height * 0.75;
-            hud.innerText = `0/10`; winOverlay.style.display = 'none';
         }
     </script>
 </body>
