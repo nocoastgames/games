@@ -3,48 +3,46 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>MEGA SNAKE - FIXED START</title>
+    <title>MEGA SNAKE - NEXT GEN</title>
     <style>
         body { 
             background-color: #000; margin: 0; overflow: hidden; 
-            display: flex; justify-content: center; align-items: center; 
-            height: 100vh; font-family: 'Arial Black', sans-serif;
+            display: flex; flex-direction: column; justify-content: center; 
+            align-items: center; height: 100vh; font-family: sans-serif;
             user-select: none; touch-action: manipulation;
         }
 
+        /* UNOBTRUSIVE HOME */
         #home-button {
             position: fixed; top: 15px; left: 15px; z-index: 1000;
             color: white; text-decoration: none; font-size: 24px;
-            background: rgba(255, 255, 255, 0.2); padding: 10px; 
-            border-radius: 10px; opacity: 0.5; transition: opacity 0.3s;
+            background: rgba(255, 255, 255, 0.1); padding: 10px; 
+            border-radius: 12px; opacity: 0.3; transition: 0.3s;
+            border: 1px solid rgba(255,255,255,0.2);
         }
+        #home-button:hover { opacity: 1.0; background: rgba(255, 255, 255, 0.2); }
 
-        /* THE START OVERLAY */
-        #overlay {
+        /* PRO START BUTTON */
+        #overlay, #win-overlay {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
             background: #000; display: flex; 
             flex-direction: column; justify-content: center; align-items: center; 
-            z-index: 500; cursor: default;
+            z-index: 500;
         }
+        #win-overlay { background: rgba(0,0,0,0.9); display: none; z-index: 600; pointer-events: none;}
 
         .btn-start {
-            font-size: 50px; padding: 30px 60px; border: 8px solid #00FF00;
-            background: #111; color: #00FF00; font-weight: bold;
-            border-radius: 20px; box-shadow: 0 0 30px #00FF00;
-            cursor: pointer; outline: none;
+            font-size: 40px; padding: 25px 50px; border: 4px solid #00FF00;
+            background: transparent; color: #00FF00; font-weight: bold;
+            border-radius: 20px; cursor: pointer; box-shadow: 0 0 20px rgba(0,255,0,0.3);
+            transition: 0.2s;
         }
-        .btn-start:active { transform: scale(0.95); background: #00FF00; color: #000; }
+        .btn-start:hover { background: #00FF00; color: #000; }
 
-        #win-overlay {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.9); display: none; 
-            flex-direction: column; justify-content: center; align-items: center; 
-            z-index: 400; text-align: center; pointer-events: none;
-        }
-
-        canvas { display: block; z-index: 10; }
+        canvas { display: block; position: absolute; top: 0; left: 0; }
         #flash { position: fixed; top:0; left:0; width:100%; height:100%; opacity: 0; z-index: 150; pointer-events: none; }
-        #hud { position: absolute; top: 20px; right: 20px; color: #00FF00; font-size: 32px; font-weight: bold; z-index: 50; }
+        
+        #hud { position: absolute; top: 20px; right: 20px; color: #00FF00; font-size: 24px; font-weight: bold; opacity: 0.6; z-index: 50; text-align: right;}
     </style>
 </head>
 <body onmousedown="handleInput(event)" onkeydown="handleInput(event)">
@@ -52,19 +50,21 @@
     <a id="home-button" href="../index.html">🏠</a>
     <div id="flash"></div>
 
-    <!-- START MENU -->
     <div id="overlay">
         <button class="btn-start" onclick="startEngine(event)">START SNAKE</button>
-        <p style="margin-top: 20px; color: white; font-size: 20px;">Get 10 Apples to Win!</p>
+        <p style="color: #666; margin-top: 20px; letter-spacing: 1px;">PHASE 2: DIRECTED MOTION</p>
     </div>
 
-    <!-- WIN SCREEN -->
     <div id="win-overlay">
         <h2 style="color: #00FF00; font-size: 80px; margin: 0;">AMAZING!</h2>
-        <p style="color: white; font-size: 30px;">YOU ARE A SNAKE MASTER!</p>
+        <p style="color: white; font-size: 32px;">YOU ARE A MASTER CHEF!</p>
     </div>
 
-    <div id="hud">0/10</div>
+    <div id="hud">
+        APPLES: <span id="apple-count">0</span>/10<br>
+        BOOSTS: <span id="hit-count">0</span>
+    </div>
+    
     <canvas id="gameCanvas"></canvas>
 
     <audio id="bg-music" loop preload="auto">
@@ -75,53 +75,55 @@
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
         const flash = document.getElementById('flash');
-        const hud = document.getElementById('hud');
-        const winOverlay = document.getElementById('win-overlay');
         const bgMusic = document.getElementById('bg-music');
+        const appleDisplay = document.getElementById('apple-count');
+        const hitDisplay = document.getElementById('hit-count');
+        const winOverlay = document.getElementById('win-overlay');
         
         const lowSensoryMode = localStorage.getItem('lowSensory') === 'true';
         const isMuted = localStorage.getItem('muteMusic') === 'true';
 
         let audioCtx, isStarted = false, gameState = "play";
         let lastPressTime = 0, cooldown = 150;
+        let sessionHits = 0, appleCount = 0;
 
-        let snake = [], snakeSize = 15, appleCount = 0;
-        let apple = {x: 400, y: 400}, moveBuffer = 0, headSize = 40;
-        let particles = [], ripples = [], lasers = [];
+        // Snake Physics
+        let snake = [];
+        let snakeSize = 20;
+        let apple = {x: 400, y: 400};
+        let moveBuffer = 0;
+        let headSize = 45;
+        let particles = [], lasers = [];
 
-        // --- BULLETPROOF START ENGINE ---
         function startEngine(e) {
-            if (e) e.stopPropagation(); // Stop click from triggering game action instantly
-
+            if(e) e.stopPropagation();
             try {
                 audioCtx = new (window.AudioContext || window.webkitAudioContext)();
                 if (!isMuted) {
                     bgMusic.volume = 0.2;
-                    bgMusic.play().catch(err => console.log("Audio skipped"));
+                    bgMusic.play().catch(err => console.log("Audio block"));
                 }
-            } catch (err) {
-                console.log("Web Audio not supported");
-            }
+            } catch (err) {}
 
-            canvas.width = window.innerWidth;
-            canvas.height = window.innerHeight;
-            
+            resize();
+            resetGame();
             document.getElementById('overlay').style.display = 'none';
             isStarted = true;
-            resetSnake();
             requestAnimationFrame(gameLoop);
         }
 
-        function resetSnake() {
+        function resetGame() {
             snake = [];
             for(let i=0; i<snakeSize; i++) {
                 snake.push({x: canvas.width/2, y: canvas.height/2});
             }
             appleCount = 0;
+            sessionHits = 0;
             moveBuffer = 0;
             gameState = "play";
             winOverlay.style.display = 'none';
-            hud.innerText = `${appleCount}/10`;
+            appleDisplay.innerText = "0";
+            hitDisplay.innerText = "0";
             spawnApple();
         }
 
@@ -131,7 +133,6 @@
         }
 
         function handleInput(event) {
-            // If the hub settings or home button are clicked, or game not started, do nothing
             if (!isStarted || gameState === "win") return;
             if (event.target.id === 'home-button' || event.target.className === 'btn-start') return;
             if (event.type === 'keydown' && event.code !== "Space" && event.code !== "Enter") return;
@@ -140,8 +141,13 @@
             if (now - lastPressTime < cooldown) return;
             lastPressTime = now;
 
+            // --- DATA COLLECTION ---
+            sessionHits++;
+            hitDisplay.innerText = sessionHits;
+            
+            // Movement Action
             moveBuffer += 350; 
-            headSize = 70; 
+            headSize = 80; 
             playSynth('kick', 0.8);
 
             if (!lowSensoryMode) {
@@ -159,11 +165,11 @@
             
             let winTimer = setInterval(() => {
                 if(!lowSensoryMode) megaCelebration(Math.random()*canvas.width, Math.random()*canvas.height);
-            }, 300);
+            }, 400);
 
             setTimeout(() => {
                 clearInterval(winTimer);
-                resetSnake();
+                resetGame();
             }, 6000);
         }
 
@@ -189,18 +195,19 @@
                 gain.gain.setValueAtTime(vol, now); gain.gain.exponentialRampToValueAtTime(0.01, now + 0.3);
                 osc.start(); osc.stop(now + 0.3);
             } else if (type === 'bite') {
-                osc.frequency.setValueAtTime(300 + (appleCount * 50), now); osc.frequency.exponentialRampToValueAtTime(800 + (appleCount * 50), now + 0.1);
-                gain.gain.setValueAtTime(vol, now); gain.gain.exponentialRampToValueAtTime(0.01, now + 0.1);
-                osc.start(); osc.stop(now + 0.1);
+                osc.frequency.setValueAtTime(300 + (appleCount * 60), now); osc.frequency.exponentialRampToValueAtTime(900, now + 0.15);
+                gain.gain.setValueAtTime(vol, now); gain.gain.exponentialRampToValueAtTime(0.01, now + 0.15);
+                osc.start(); osc.stop(now + 0.15);
             } else if (type === 'win') {
-                osc.type = 'sawtooth'; osc.frequency.setValueAtTime(100, now); osc.frequency.exponentialRampToValueAtTime(1200, now + 1);
-                gain.gain.setValueAtTime(vol, now); gain.gain.exponentialRampToValueAtTime(0.01, now + 1);
-                osc.start(); osc.stop(now + 1);
+                osc.type = 'sawtooth'; osc.frequency.setValueAtTime(100, now); osc.frequency.exponentialRampToValueAtTime(1500, now + 1.2);
+                gain.gain.setValueAtTime(vol, now); gain.gain.exponentialRampToValueAtTime(0.01, now + 1.2);
+                osc.start(); osc.stop(now + 1.2);
             }
         }
 
         function gameLoop() {
-            ctx.fillStyle = 'rgba(0, 0, 0, 0.2)';
+            // Motion blur trail
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.18)';
             ctx.fillRect(0, 0, canvas.width, canvas.height);
 
             if (gameState === "play") {
@@ -209,63 +216,85 @@
                 const targetAngle = Math.atan2(dy, dx);
 
                 if (moveBuffer > 0) {
-                    let step = 28; 
+                    let step = 30; 
                     let nextX = snake[0].x + Math.cos(targetAngle) * step;
                     let nextY = snake[0].y + Math.sin(targetAngle) * step;
                     snake.unshift({ x: nextX, y: nextY });
                     if (snake.length > snakeSize) snake.pop();
                     moveBuffer -= step;
+
+                    // Predator Lunge Glow
+                    ctx.shadowBlur = 30; ctx.shadowColor = "#00FF00";
                 }
 
                 if (Math.hypot(snake[0].x - apple.x, snake[0].y - apple.y) < 60) {
                     appleCount++;
-                    hud.innerText = `${appleCount}/10`;
+                    appleDisplay.innerText = appleCount;
+                    
+                    // --- DATA LOG: LOG SUCCESS TO HUB ---
+                    let totalS = parseInt(localStorage.getItem('statSuccess') || 0);
+                    localStorage.setItem('statSuccess', totalS + 1);
+
                     if (appleCount >= 10) winSequence();
                     else {
-                        playSynth('bite', 0.5);
-                        snakeSize += 8;
+                        playSynth('bite', 0.6);
+                        snakeSize += 10;
                         spawnApple();
                         megaCelebration(apple.x, apple.y);
                     }
                 }
             }
 
-            if (headSize > 40) headSize -= 1.5;
+            if (headSize > 45) headSize -= 2;
 
-            // APPLE
+            // DRAW APPLE
             if (gameState === "play") {
-                let breathe = 1 + Math.sin(Date.now() * 0.005) * 0.2;
-                ctx.fillStyle = '#FF0000'; ctx.shadowBlur = 30 * breathe; ctx.shadowColor = "red";
-                ctx.beginPath(); ctx.arc(apple.x, apple.y, 35 * breathe, 0, Math.PI * 2); ctx.fill();
+                let br = 1 + Math.sin(Date.now() * 0.008) * 0.2;
+                ctx.fillStyle = '#FF0000'; ctx.shadowBlur = 40 * br; ctx.shadowColor = "red";
+                ctx.beginPath(); ctx.arc(apple.x, apple.y, 40 * br, 0, Math.PI * 2); ctx.fill();
                 ctx.shadowBlur = 0;
             }
 
-            // SNAKE
+            // DRAW FLUID SNAKE
             snake.forEach((seg, i) => {
-                const hue = (120 + i * 4) % 360;
+                const hue = (120 + i * 5) % 360;
                 ctx.fillStyle = `hsl(${hue}, 100%, 50%)`;
-                let r = (i === 0) ? headSize : Math.max(30 - (i * 0.6), 10);
+                let r = (i === 0) ? headSize : Math.max(35 - (i * 0.8), 8);
                 ctx.beginPath(); ctx.arc(seg.x, seg.y, r, 0, Math.PI * 2); ctx.fill();
-                if(i === 0) { 
+
+                if(i === 0) { // Kawaii Head
                     ctx.fillStyle = "white";
-                    ctx.beginPath(); ctx.arc(seg.x-12, seg.y-12, 10, 0, Math.PI*2); ctx.fill();
-                    ctx.beginPath(); ctx.arc(seg.x+12, seg.y-12, 10, 0, Math.PI*2); ctx.fill();
+                    ctx.beginPath(); ctx.arc(seg.x-14, seg.y-14, 12, 0, Math.PI*2); ctx.fill();
+                    ctx.beginPath(); ctx.arc(seg.x+14, seg.y-14, 12, 0, Math.PI*2); ctx.fill();
                     ctx.fillStyle = "black";
-                    ctx.beginPath(); ctx.arc(seg.x-12, seg.y-14, 5, 0, Math.PI*2); ctx.fill();
-                    ctx.beginPath(); ctx.arc(seg.x+12, seg.y-14, 5, 0, Math.PI*2); ctx.fill();
+                    ctx.beginPath(); ctx.arc(seg.x-14, seg.y-16, 6, 0, Math.PI*2); ctx.fill();
+                    ctx.beginPath(); ctx.arc(seg.x+14, seg.y-16, 6, 0, Math.PI*2); ctx.fill();
                 }
             });
+            ctx.shadowBlur = 0;
 
-            // PARTY EFFECTS
-            lasers.forEach(l => { ctx.strokeStyle = `rgba(0, 255, 255, ${l.life})`; ctx.lineWidth = 15*l.life; ctx.beginPath(); ctx.moveTo(l.x, l.y); ctx.lineTo(l.x+Math.cos(l.angle)*2000, l.y+Math.sin(l.angle)*2000); ctx.stroke(); l.life-=0.03; });
-            particles.forEach(p => { ctx.fillStyle = p.color; ctx.globalAlpha = p.life; ctx.beginPath(); ctx.arc(p.x, p.y, p.s, 0, Math.PI*2); ctx.fill(); p.x+=p.vx; p.y+=p.vy; p.life-=0.02; });
-            lasers = lasers.filter(l => l.life > 0); particles = particles.filter(p => p.life > 0);
+            // DRAW PARTICLES
+            particles.forEach(p => {
+                ctx.fillStyle = p.color; ctx.globalAlpha = p.life;
+                ctx.beginPath(); ctx.arc(p.x, p.y, p.s, 0, Math.PI*2); ctx.fill();
+                p.x += p.vx; p.y += p.vy; p.life -= 0.025;
+            });
+            particles = particles.filter(p => p.life > 0);
+            
+            lasers.forEach(l => {
+                ctx.strokeStyle = `rgba(0, 255, 255, ${l.life})`; ctx.lineWidth = 15*l.life;
+                ctx.beginPath(); ctx.moveTo(l.x, l.y);
+                ctx.lineTo(l.x+Math.cos(l.angle)*2500, l.y+Math.sin(l.angle)*2500); ctx.stroke();
+                l.life -= 0.04;
+            });
+            lasers = lasers.filter(l => l.life > 0);
+
             ctx.globalAlpha = 1;
-
             requestAnimationFrame(gameLoop);
         }
 
-        window.onresize = () => { canvas.width = window.innerWidth; canvas.height = window.innerHeight; };
+        function resize() { canvas.width = window.innerWidth; canvas.height = window.innerHeight; }
+        window.onresize = resize;
     </script>
 </body>
 </html>
